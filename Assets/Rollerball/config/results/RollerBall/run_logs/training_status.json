@@ -1,0 +1,56 @@
+{
+    "RollerBall": {
+        "checkpoints": [
+            {
+                "steps": 9504,
+                "file_path": "results/RollerBall/RollerBall/RollerBall-9504.onnx",
+                "reward": 0.6363636363636364,
+                "creation_time": 1761678068.9845812,
+                "auxillary_file_paths": [
+                    "results/RollerBall/RollerBall/RollerBall-9504.pt"
+                ]
+            },
+            {
+                "steps": 44209,
+                "file_path": "results/RollerBall/RollerBall/RollerBall-44209.onnx",
+                "reward": 1.0,
+                "creation_time": 1761678376.1411781,
+                "auxillary_file_paths": [
+                    "results/RollerBall/RollerBall/RollerBall-44209.pt"
+                ]
+            },
+            {
+                "steps": 86057,
+                "file_path": "results/RollerBall/RollerBall/RollerBall-86057.onnx",
+                "reward": 1.0,
+                "creation_time": 1761678746.822623,
+                "auxillary_file_paths": [
+                    "results/RollerBall/RollerBall/RollerBall-86057.pt"
+                ]
+            },
+            {
+                "steps": 232020,
+                "file_path": "results/RollerBall/RollerBall/RollerBall-232020.onnx",
+                "reward": 1.0,
+                "creation_time": 1761678980.304123,
+                "auxillary_file_paths": [
+                    "results/RollerBall/RollerBall/RollerBall-232020.pt"
+                ]
+            }
+        ],
+        "final_checkpoint": {
+            "steps": 232020,
+            "file_path": "results/RollerBall/RollerBall.onnx",
+            "reward": 1.0,
+            "creation_time": 1761678980.304123,
+            "auxillary_file_paths": [
+                "results/RollerBall/RollerBall/RollerBall-232020.pt"
+            ]
+        }
+    },
+    "metadata": {
+        "stats_format_version": "0.3.0",
+        "mlagents_version": "1.2.0.dev0",
+        "torch_version": "2.8.0"
+    }
+}
