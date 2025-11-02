@@ -12,6 +12,7 @@ namespace DodgyBall.Scripts
     {
         Coroutine Attack(float duration, Action onComplete);
         Vector3 GetRandomInRangePosition(Transform target);
+        void Orient(Transform target);
     }
     
     public sealed class AttackHandle
@@ -85,27 +86,37 @@ namespace DodgyBall.Scripts
         private readonly List<AttackHandle> _waiting = new();
         private readonly List<AttackHandle> _active = new();
         
-        private Coroutine _scheduler;
-        
-        // Cache thy updates ;)
-        private static readonly WaitForFixedUpdate waitForFixedUpdate = new WaitForFixedUpdate();
+        // FixedUpdate scheduler state
+        private float _intervalTimer = 0f;
+        private float _nextInterval = 0f;
 
         void Awake()
         {
             if (!target) { Debug.LogWarning("Orchestrator: no target assigned."); return; }
-            
+            if (!SwingKeyframeSet.IsLoaded) SwingKeyframeSet.LoadSingleton(); // Load the sword keyframe helper
+            Debug.Log($"Loaded {SwingKeyframeSet.Instance.Count} keyframes.");
+        }
+
+        void Start()
+        {
             CollectWeapons();
         }
         
         void OnEnable()
         {
             if (_weapons.Count == 0) return;
-            _scheduler = StartCoroutine(SchedulerLoop());
+            ResetScheduler();
         }
+        
         void OnDisable()
         {
-            if (_scheduler != null) StopCoroutine(_scheduler);
             StopAllAttacks();
+        }
+        
+        public void ResetScheduler()
+        {
+            _intervalTimer = 0f;
+            _nextInterval  = Random.Range(intervalMin, intervalMax);
         }
         
         private void CollectWeapons()
@@ -126,6 +137,7 @@ namespace DodgyBall.Scripts
                 IWeapon iWeapon = initialized.GetComponent<IWeapon>() ?? initialized.GetComponentInChildren<IWeapon>(true);
                 if (iWeapon == null) { Debug.LogError($"Prefab '{prefab.name}' has no component implementing IWeapon."); continue; }
                 initialized.transform.position = iWeapon.GetRandomInRangePosition(target);
+                iWeapon.Orient(target);
                 
                 _weapons.Add(new WeaponEntry{ weapon = iWeapon, transform = initialized.transform });
             }
@@ -171,38 +183,29 @@ namespace DodgyBall.Scripts
             _active.Add(handle);
         }
         
-        private IEnumerator SchedulerLoop()
+        void FixedUpdate()
         {
-            while (true)
+            if (_weapons.Count == 0 || !target) return;
+
+            _intervalTimer += Time.fixedDeltaTime;
+
+            if (_intervalTimer >= _nextInterval)
             {
+                _intervalTimer = 0f;
+                _nextInterval  = Random.Range(intervalMin, intervalMax);
+
                 if (_waiting.Count > 0 && _active.Count < maxConcurrentSwings)
                 {
-                    bool allowNew = _active.Count == 0 || Random.value < chanceForConcurrency;
-                    if (allowNew)
+                    if (_active.Count == 0 || Random.value < chanceForConcurrency)
                     {
-                        // pick a random waiting weapon
                         int idx = Random.Range(0, _waiting.Count);
                         var handle = _waiting[idx];
                         _waiting.RemoveAt(idx);
 
-                        float dur = GetInformedDuration();
-                        StartAttack(handle, dur);
+                        float duration = GetInformedDuration();
+                        StartAttack(handle, duration);
                     }
                 }
-
-                float wait = Random.Range(intervalMin, intervalMax);
-                yield return FixedWait(wait);
-            }
-        }
-        
-        // Simulate wait time in seconds using delta time
-        private static IEnumerator FixedWait(float seconds)
-        {
-            float remaining = seconds;
-            while (remaining > 0f)
-            {
-                yield return waitForFixedUpdate;
-                remaining -= Time.fixedDeltaTime;
             }
         }
 

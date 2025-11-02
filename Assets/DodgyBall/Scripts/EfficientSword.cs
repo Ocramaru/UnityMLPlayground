@@ -1,163 +1,98 @@
 using System.Collections;
 using UnityEngine;
 
-public class EfficientSword : MonoBehaviour
+namespace DodgyBall.Scripts
 {
-    [Header("Refs")]
-    public Transform target;
-    public string binPath = "Assets/DodgyBall/data/sword_planes.bin";
-    private Vector3 planeNormal;
-    private Vector3[] planes;
-    
-    [Header("Swing")]
-    [Range(0f, 360f)] public float arcLength = 150f;
-    public float duration = .35f;
-    public float MIN_DURATION = .001f;
-    public AnimationCurve ease = AnimationCurve.EaseInOut(0,0,1,1);
-    
-    public readonly Quaternion weaponAdjustment = Quaternion.Euler(-90, -90, 0);
-    
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    public class EfficientSword : MonoBehaviour
     {
-        // Precomp orientation
-        Reorient();
-        
-        // Load sword planes
-        var planeSet = PlaneSet.Load(binPath);
-        planeNormal = planeSet.normal;
-        planes = new Vector3[planeSet.planes.Length];
-        for (int i = 0; i < planeSet.planes.Length; i++)
-            planes[i] = planeSet.planes[i].origin;
-        
-        Debug.Log($"[PlaneStepper] Loaded {planes.Length} planes from '{binPath}' | Normal: {planeNormal}");
-    }
+        [Header("Refs")]
+        public Transform target;
+        public string binPath = "Assets/DodgyBall/data/swing_keyframes.bin";
+        private Vector3 planeNormal;
+        private Vector3[] planes;
     
-    private Quaternion PlanarRotation(Vector3 planarDirection, Vector3 normal, bool useCorrection = true)
-    {
-        planarDirection.Normalize();
-        if (useCorrection) return Quaternion.LookRotation(planarDirection, normal) * weaponAdjustment;
-        return Quaternion.LookRotation(planarDirection, normal);
-    }
+        [Header("Swing")]
+        [Range(0f, 360f)] public float arcLength = 150f;
+        public float duration = .35f;
+        public float MIN_DURATION = .001f;
+        public AnimationCurve ease = AnimationCurve.EaseInOut(0,0,1,1);
     
-    private (Vector3 normal, Vector3 targetDir) Reorient()
-    {
-        if (!target) return (Vector3.up, Vector3.forward);
-
-        Vector3 normal = planeNormal.sqrMagnitude > 0f ? planeNormal.normalized : Vector3.up;
-        Vector3 direction = target.position - transform.position;
-        Vector3 directionOnPlane = Vector3.ProjectOnPlane(direction, normal);
-
-        if (directionOnPlane.sqrMagnitude < 1e-8f) return (normal, Vector3.forward);
+        public readonly Quaternion weaponAdjustment = Quaternion.Euler(-90, -90, 0);
+        private Quaternion baseRotation = Quaternion.identity;
+        private SwingKeyframeSet loadedKeyframes;
         
-        transform.rotation = PlanarRotation(directionOnPlane, normal);
-        
-        return (normal, directionOnPlane);
-    }
-    
-    IEnumerator SwingArc(Quaternion start, Quaternion end)
-    {
-        float t = 0f;
-        while (t < 1f)
+        void Start()
         {
-            t += Time.deltaTime / Mathf.Max(MIN_DURATION, duration);
-            float k = ease.Evaluate(Mathf.Clamp01(t));
-            transform.rotation = Quaternion.Slerp(start, end, k);
-            yield return null;
+            // Precomp orientation
+            Orient();
+        
+            // Load swordKeyframes
+            loadedKeyframes = SwingKeyframeSet.Load(binPath);
+            var randomSwing = loadedKeyframes.GetRandomSwing();
         }
-        transform.rotation = end;
-    }
-    
-    public void Swing()
-    {
-        if (!target) return;
-        
-        // int randIndex = Random.Range(0, planes.Length);
-        // Vector3 randomPlane = planes[randIndex];
-        Vector3 randomPlane = planes[Random.Range(0, planes.Length)];
-        // Debug.Log($"Swing {randomPlane.x} | Normal: {randomPlane}");
-        
-        // DrawSwingPlane(randomPlane, target.position);
 
-        Quaternion swordPositioning = (randomPlane.x < 0f) ? Quaternion.Euler(180f, 0f, -90f) : Quaternion.Euler(0f, 0f, -90f);
-        Quaternion start = PlanarRotation(randomPlane, planeNormal) * swordPositioning;
-        Quaternion end = Quaternion.AngleAxis(arcLength, randomPlane) * start;
-        
-        StopAllCoroutines();
-        StartCoroutine(SwingArc(start, end));
-    }
-    
-    public void Swing(float duration)
-    {
-        this.duration = Mathf.Max(MIN_DURATION, duration);
-        Swing();
-    }
-    
-    // Old debug funcs, Quaternion Directions are annoying haha
-    private GameObject startSword;
-    private GameObject endSword;
-    void CreateDebugCopy(Quaternion start, Quaternion end)
-    {
-        // Clean Up
-        if (startSword) Destroy(startSword);
-        if (endSword) Destroy(endSword);
-    
-        startSword = Instantiate(gameObject, transform.position, start);
-        endSword = Instantiate(gameObject, transform.position, end);
-        startSword.name = $"DebugStartSword";
-        endSword.name = $"DebugEndSword";
-
-        // DISABLE the script on the copy to prevent infinite loop
-        var scriptComponent = startSword.GetComponent<EfficientSword>();
-        if (scriptComponent) scriptComponent.enabled = false;
-    
-        var scriptComponent2 = endSword.GetComponent<EfficientSword>();
-        if (scriptComponent2) scriptComponent2.enabled = false;
-
-        // Make translucent
-        SetTranslucentColor(startSword, new Color(0, 1, 0, 0.3f));
-        SetTranslucentColor(endSword, new Color(1, 0, 0, 0.3f));
-    }
-
-    void SetTranslucentColor(GameObject obj, Color color)
-    {
-        Renderer[] renderers = obj.GetComponentsInChildren<Renderer>();
-        foreach (Renderer r in renderers)
+        void Update()
         {
-            foreach (Material mat in r.materials)
+            if (Input.GetKeyDown(KeyCode.Space))
             {
-                mat.color = color;
-                mat.SetFloat("_Mode", 3); // Transparent
-                mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-                mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-                mat.SetInt("_ZWrite", 0);
-                mat.DisableKeyword("_ALPHATEST_ON");
-                mat.EnableKeyword("_ALPHABLEND_ON");
-                mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-                mat.renderQueue = 3000;
+                Swing();
+            }
+
+            if (Input.GetKeyDown(KeyCode.R))
+            {
+                Orient();
             }
         }
-    }
     
-    private GameObject debugPlane;
-    private void DrawSwingPlane(Vector3 swingAxis, Vector3 targetDir)
-    {
-        // Clean up old plane
-        if (debugPlane) Destroy(debugPlane);
+        private void Orient()
+        {
+            if (!target) return;
 
-        debugPlane = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        debugPlane.name = "SwingPlane";
+            Vector3 normal = planeNormal.sqrMagnitude > 0f ? planeNormal.normalized : Vector3.up;
+            Vector3 direction = target.position - transform.position;
+            
+            Debug.DrawLine(transform.position, transform.forward * 100f, Color.blue, 10f); // Where sword thinks it's pointing
+            Debug.DrawLine(transform.position, direction.normalized * 100f, Color.red, 10f); // Where target actually is
 
-        debugPlane.transform.localScale = new Vector3(1f, 1f, 0.001f);
-        debugPlane.transform.position = transform.position;
-
-        // Orient the plane - swing axis is the plane's normal
-        // Vector3 planeRight = targetDir;
-        Vector3 planeUp = Vector3.Cross(swingAxis, targetDir).normalized;
-        debugPlane.transform.rotation = Quaternion.LookRotation(swingAxis, planeUp);
-
-        // Make semi-transparent
-        var renderer = debugPlane.GetComponent<Renderer>();
-        renderer.material.color = new Color(0, 1, 0, 0.15f); // Green, semi-transparent
+            baseRotation = Quaternion.LookRotation(direction, normal) * weaponAdjustment;
+            transform.rotation = baseRotation;
+            Debug.Log($"Orient rotation {baseRotation}");
+        }
+    
+        IEnumerator SwingArc(Quaternion start, Quaternion end)
+        {
+            float t = 0f;
+            while (t < 1f)
+            {
+                t += Time.deltaTime / Mathf.Max(MIN_DURATION, duration);
+                float k = ease.Evaluate(Mathf.Clamp01(t));
+                transform.rotation = Quaternion.Slerp(start, end, k);
+                yield return null;
+            }
+            transform.rotation = end;
+        }
+        
+        public void Swing()
+        {
+            SwingKeyframe randomSwingKeyframe = loadedKeyframes.GetRandomSwing();
+            // SwordHelpers.DebugSwingKeyframe(randomSwingKeyframe);
+            
+            Vector3 modifiedAxis = baseRotation * randomSwingKeyframe.localSwingAxis;
+            Quaternion swordPositioning = randomSwingKeyframe.localSwingAxis.y < 0 ? Quaternion.Euler(0f, 180f, 90f) : Quaternion.Euler(0f, 0f, -90f);
+    
+            Quaternion start = Quaternion.LookRotation(modifiedAxis, loadedKeyframes.planeNormal) * weaponAdjustment * swordPositioning;
+            Quaternion end = Quaternion.AngleAxis(arcLength, modifiedAxis) * start;
+            
+            // SwordHelpers.DrawSwingPlane(transform, modifiedAxis,loadedKeyframes.planeNormal);
+            // SwordHelpers.DebugStartEndSword(gameObject, transform, start, end);
+            StopAllCoroutines();
+            StartCoroutine(SwingArc(start, end));
+        }
+    
+        public void Swing(float duration)
+        {
+            this.duration = Mathf.Max(MIN_DURATION, duration);
+            Swing();
+        }
     }
 }
