@@ -15,5 +15,35 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-mlagents = { path = "/Users/marcocassar/Projects/UnityMLagents/unity-ml-agents-repo/ml-agents", editable = true }
-mlagents-envs = { path = "/Users/marcocassar/Projects/UnityMLagents/unity-ml-agents-repo/ml-agents-envs", editable = true }
+mlagents = { path = "./ml-agents/ml-agents", editable = true }
+mlagents-envs = { path = "./ml-agents/ml-agents-envs", editable = true }
+torch = [
+  { index = "pytorch-cpu", extra = "cpu" },
+  { index = "pytorch-cu128", extra = "cu128" },
+]
+
+[project.optional-dependencies]
+cpu = [
+  "torch>=2.8.0"
+]
+cu128 = [
+  "torch>=2.8.0"
+]
+
+[tool.uv]
+conflicts = [
+  [
+    { extra = "cpu" },
+    { extra = "cu128" },
+  ],
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

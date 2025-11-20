@@ -19,7 +19,7 @@ namespace DodgyBall.Scripts
         private Rigidbody _rb;
         private Transform[] _weaponRefs;
         
-        public float[] aliveMilestones = { 1f, 3f, 5f, 10f, 15f};
+        public float[] aliveMilestones = { 1f, 3f, 5f, 7f, 10f, 15f};
         private int _currentAliveMilestone = 0;
         private float _timeAlive = 0f;
         public float Reward = 0f;
