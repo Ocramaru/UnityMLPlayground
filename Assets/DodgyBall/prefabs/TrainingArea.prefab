@@ -678,6 +678,9 @@ MonoBehaviour:
   weaponPrefabs:
   - {fileID: 4134139538063528224, guid: b7756be2617834058a638b0f562cdc1d, type: 3}
   - {fileID: 4134139538063528224, guid: b7756be2617834058a638b0f562cdc1d, type: 3}
+  useRandomWeaponCount: 1
+  minWeaponCount: 1
+  maxWeaponCount: 3
   target: {fileID: 7054570584150924382}
 --- !u!1 &7852293602157399593
 GameObject:
@@ -841,6 +844,7 @@ GameObject:
   - component: {fileID: 2787305171739100833}
   - component: {fileID: 8591627265874186378}
   - component: {fileID: 971854940363803819}
+  - component: {fileID: 6592398466442409714}
   m_Layer: 0
   m_Name: Agent
   m_TagString: Untagged
@@ -1007,7 +1011,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.Policies.BehaviorParameters
   m_BrainParameters:
     VectorObservationSize: 24
-    NumStackedVectorObservations: 1
+    NumStackedVectorObservations: 3
     m_ActionSpec:
       m_NumContinuousActions: 3
       BranchSizes: 
@@ -1036,6 +1040,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
-  DecisionPeriod: 5
+  DecisionPeriod: 3
   DecisionStep: 0
   TakeActionsBetweenDecisions: 1
+--- !u!114 &6592398466442409714
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8917331471161485261}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd8012d5925524537b27131fef517017, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.Sensors.BufferSensorComponent
+  m_SensorName: BufferSensor
+  m_ObservableSize: 6
+  m_MaxNumObservables: 3

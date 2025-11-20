@@ -43,7 +43,7 @@ namespace DodgyBall.Scripts
             
             baseRotation = Quaternion.LookRotation(direction, normal) * weaponAdjustment;
             transform.localRotation = baseRotation;
-            Debug.Log($"Orient Set for {gameObject.name} with rotation: {baseRotation} | euler {baseRotation.eulerAngles}");
+            // Debug.Log($"Orient Set for {gameObject.name} with rotation: {baseRotation} | euler {baseRotation.eulerAngles}");
         }
         
         IEnumerator SwingArc(Quaternion start, Quaternion end, float duration, float arcDegrees, Vector3 rotationAxis, Action onComplete)

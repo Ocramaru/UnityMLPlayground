@@ -18,6 +18,7 @@ namespace DodgyBall.Scripts
 
         private Rigidbody _rb;
         private Transform[] _weaponRefs;
+        private BufferSensorComponent _bufferSensor;
         
         public float[] aliveMilestones = { 1f, 3f, 5f, 7f, 10f, 15f};
         private int _currentAliveMilestone = 0;
@@ -27,12 +28,13 @@ namespace DodgyBall.Scripts
         void Start()
         {
             _rb = GetComponent<Rigidbody>();
+            _bufferSensor = GetComponent<BufferSensorComponent>();
             InitializeWeaponRefs();
         }
 
         private void InitializeWeaponRefs()
         {
-            if (orchestrator != null)
+            if (orchestrator)
             {
                 _weaponRefs = orchestrator.GetWeaponTransforms();
             }
@@ -46,6 +48,8 @@ namespace DodgyBall.Scripts
             _timeAlive = 0f;
             _currentAliveMilestone = 0;
             Reward = 0f;
+
+            orchestrator.RedrawRandomWeaponCount();
         }
         
         public override void CollectObservations(VectorSensor sensor)
@@ -57,30 +61,16 @@ namespace DodgyBall.Scripts
             // (weapons) - 6 observations per weapon * maxObservedWeapons
             if (_weaponRefs != null)
             {
-                for (int i = 0; i < maxObservedWeapons; i++)
+                for (int i = 0; i < _weaponRefs.Length; i++)
                 {
-                    if (i < _weaponRefs.Length && _weaponRefs[i])
+                    var p = _weaponRefs[i].localPosition;
+                    var r = _weaponRefs[i].localRotation.eulerAngles;
+                    
+                    _bufferSensor.AppendObservation(new float[]
                     {
-                        // Position (3 values)
-                        sensor.AddObservation(_weaponRefs[i].localPosition);
-                        // Rotation as euler angles (3 values)
-                        sensor.AddObservation(_weaponRefs[i].localRotation.eulerAngles);
-                    }
-                    else
-                    {
-                        // Add zeros if weapon doesn't exist (6 values)
-                        sensor.AddObservation(Vector3.zero); // position
-                        sensor.AddObservation(Vector3.zero); // rotation
-                    }
-                }
-            }
-            else
-            {
-                // No weapon refs, add zeros for all weapon slots
-                for (int i = 0; i < maxObservedWeapons; i++)
-                {
-                    sensor.AddObservation(Vector3.zero); // position
-                    sensor.AddObservation(Vector3.zero); // rotation
+                        p.x, p.y, p.z,
+                        r.x, r.y, r.z
+                    });
                 }
             }
         }
@@ -114,13 +104,10 @@ namespace DodgyBall.Scripts
 
         private void OnCollisionEnter(Collision other)
         {
-            if (other.gameObject.CompareTag("Wall"))
-            {
+            if (other.gameObject.CompareTag("Wall")) {
                 Vector3 normal = other.contacts[0].normal;
                 _rb.linearVelocity = Vector3.Reflect(_rb.linearVelocity, normal);
-            }
-            if (other.gameObject.CompareTag("Weapon"))
-            {
+            } else if (other.gameObject.CompareTag("Weapon")) {
                 EndEpisode();
             }
         }

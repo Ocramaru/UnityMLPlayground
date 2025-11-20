@@ -91,9 +91,15 @@ namespace DodgyBall.Scripts
         
         // We should implement a curve to handle how time will impact duration min max so we start off with slower durations
         
-        [Header("Weapons (Prefabs/Scene Objects")] 
+        [Header("Weapons (Prefabs/Scene Objects")]
         [Tooltip("Prefabs to instantiate. Each must include a component that implements IWeapon.")]
         public GameObject[] weaponPrefabs;  // Must implement IWeapon
+
+        [Header("Random Weapon Count")]
+        [Tooltip("If true, instantiate a random number of weapons between minWeaponCount and maxWeaponCount.")]
+        public bool useRandomWeaponCount = false;
+        public int minWeaponCount = 1;
+        public int maxWeaponCount = 3;
         
         [Header("Target")] 
         public Transform target;
@@ -144,8 +150,10 @@ namespace DodgyBall.Scripts
                 return;
             }
             
-            foreach (var prefab in weaponPrefabs)
+            int weaponCountToInstantiate = useRandomWeaponCount ? Random.Range(minWeaponCount, maxWeaponCount + 1) : weaponPrefabs.Length;
+            for (int i = 0; i < weaponCountToInstantiate; i++)
             {
+                var prefab = weaponPrefabs[i % weaponPrefabs.Length];
                 if (!prefab) continue;
                 
                 GameObject initialized = Instantiate(prefab, transform);
@@ -283,6 +291,22 @@ namespace DodgyBall.Scripts
                 transforms[i] = _weapons[i].transform;
             }
             return transforms;
+        }
+
+        public void RedrawRandomWeaponCount()
+        {
+            if (!useRandomWeaponCount) return;
+
+            StopAllAttacks();
+
+            foreach (var entry in _weapons)
+            {
+                if (entry.transform != null)
+                    Destroy(entry.transform.gameObject);
+            }
+
+            CollectWeapons();
+            ResetScheduler();
         }
     }
 }
