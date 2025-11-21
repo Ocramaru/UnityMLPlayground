@@ -128,11 +128,11 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  attackRange: 2
+  attackRange: 1
   approachSpeed: 0.5
-  stoppingDistance: 1
-  decelerationDistance: 3
-  dampingFactor: 0.9
+  stoppingDistance: 0.8
+  decelerationDistance: 2
+  dampingFactor: 0.6
 --- !u!54 &6940724812715797699
 Rigidbody:
   m_ObjectHideFlags: 0

@@ -110,7 +110,7 @@ namespace DodgyBall.Scripts
         {
             if (!target) return transform.localPosition;
 
-            float radius = attackRange;
+            float radius = attackRange + 1;
             return target.localPosition + Random.insideUnitSphere * radius;
         }
         
@@ -122,7 +122,7 @@ namespace DodgyBall.Scripts
 
         public void ApproachTarget(Vector3 targetPosition)
         {
-            if (_rb == null) return;
+            if (!_rb) return;
 
             Vector3 currentPos = transform.localPosition;
             Vector3 direction = (targetPosition - currentPos).normalized;
@@ -155,7 +155,7 @@ namespace DodgyBall.Scripts
 
         public void StopApproaching()
         {
-            if (_rb) return;
+            if (!_rb) return;
 
             _rb.linearVelocity = Vector3.zero;
             _rb.angularVelocity = Vector3.zero;
