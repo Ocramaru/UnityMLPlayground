@@ -103,7 +103,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3680cb80977e444eb932bb1067958d11, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DodgyBall.Scripts.mlSword
-  arcLength: 150
+  arcLength: 110
   ease:
     serializedVersion: 2
     m_Curve:

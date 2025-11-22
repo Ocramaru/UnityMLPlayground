@@ -131,8 +131,8 @@ namespace DodgyBall.Scripts
             Quaternion start = Quaternion.AngleAxis(offset, swingAxis) * neutral;
             
             // Debug Step
-            float finalOffset = Vector3.SignedAngle(start * Vector3.forward, projected, swingAxis);
-            Debug.Log($"Final Offset from mid: {finalOffset} (expected ±{arcLength/2f})");
+            // float finalOffset = Vector3.SignedAngle(start * Vector3.forward, projected, swingAxis);
+            // Debug.Log($"Final Offset from mid: {finalOffset} (expected ±{arcLength/2f})");
             
             return StartCoroutine(SwingArc(start, duration, arcLength, swingAxis, onComplete));
         }
@@ -191,21 +191,5 @@ namespace DodgyBall.Scripts
             _rb.linearVelocity = Vector3.zero;
             _rb.angularVelocity = Vector3.zero;
         }
-
-        private GameObject _debugTargetSphere;
-
-        void TargetApparition(Vector3 targetPosition, Vector3 targetScale)
-        {
-            if (_debugTargetSphere)
-            {
-                Destroy(_debugTargetSphere);
-            }
-
-            _debugTargetSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            _debugTargetSphere.transform.position = targetPosition;
-            _debugTargetSphere.transform.localScale = targetScale;
-            _debugTargetSphere.name = "Target Apparition";
-        }
-        
     }
 }

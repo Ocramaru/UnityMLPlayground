@@ -643,13 +643,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DodgyBall.Scripts.Orchestrator
   useTeleports: 0
   disableMovement: 0
-  totalSteps: 100
   maxConcurrentSwings: 3
   chanceForConcurrency: 0.25
+  concurrencyCheckInterval: 0.2
   intervalMin: 0.25
   intervalMax: 1.5
-  durationMin: 1
-  durationMax: 1.8
+  durationMin: 0.7
+  durationMax: 1.4
   rangeShiftCurve:
     serializedVersion: 2
     m_Curve:
@@ -677,9 +677,8 @@ MonoBehaviour:
   shiftStepPercent: 0.1
   weaponPrefabs:
   - {fileID: 4134139538063528224, guid: b7756be2617834058a638b0f562cdc1d, type: 3}
-  - {fileID: 4134139538063528224, guid: b7756be2617834058a638b0f562cdc1d, type: 3}
   useRandomWeaponCount: 1
-  minWeaponCount: 1
+  minWeaponCount: 2
   maxWeaponCount: 3
   target: {fileID: 7054570584150924382}
 --- !u!1 &7852293602157399593

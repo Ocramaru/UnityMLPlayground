@@ -73,12 +73,10 @@ namespace DodgyBall.Scripts
         public bool useTeleports = false; //Unimplemented Would Be Sick Tho
         public bool disableMovement = false;
         
-        [Header("Agent Stuff (here for now)")] public int totalSteps = 100;
-        private int _step = 0;
-        
-        [Header("Timing Stuff")] 
+        [Header("Timing Stuff")]
         public int maxConcurrentSwings = 3;
         [Range(0f, 1f)] public float chanceForConcurrency = 0.25f;
+        public float concurrencyCheckInterval = 0.2f; // Check for concurrent attacks every N seconds
         public float intervalMin = 0.5f;
         public float intervalMax = 1.5f;
         public float durationMin = 0.25f;
@@ -111,6 +109,7 @@ namespace DodgyBall.Scripts
         // FixedUpdate scheduler state
         private float _intervalTimer = 0f;
         private float _nextInterval = 0f;
+        private float _nextConcurrencyCheck = 0f;
 
         void Awake()
         {
@@ -222,34 +221,57 @@ namespace DodgyBall.Scripts
                 _intervalTimer = 0f;
                 _nextInterval  = Random.Range(intervalMin, intervalMax);
 
+                // Start an attack when interval expires (or force start if none active)
                 if (_waiting.Count > 0 && _active.Count < maxConcurrentSwings)
                 {
-                    if (_active.Count == 0 || Random.value < chanceForConcurrency)
-                    {
-                        int idx = Random.Range(0, _waiting.Count);
-                        var handle = _waiting[idx];
-                        _waiting.RemoveAt(idx);
+                    int idx = Random.Range(0, _waiting.Count);
+                    var handle = _waiting[idx];
+                    _waiting.RemoveAt(idx);
 
-                        float duration = GetInformedDuration();
-                        StartAttack(handle, duration);
-                    }
+                    float duration = Random.Range(durationMin, durationMax);
+                    StartAttack(handle, duration);
+                }
+            }
+
+            // Allow concurrent attacks to join in every N seconds
+            if (Time.fixedTime >= _nextConcurrencyCheck && _active.Count > 0 && _waiting.Count > 0 && _active.Count < maxConcurrentSwings)
+            {
+                _nextConcurrencyCheck = Time.fixedTime + concurrencyCheckInterval;
+
+                if (Random.value < chanceForConcurrency)
+                {
+                    int idx = Random.Range(0, _waiting.Count);
+                    var handle = _waiting[idx];
+                    _waiting.RemoveAt(idx);
+
+                    float duration = Random.Range(durationMin, durationMax);
+                    StartAttack(handle, duration);
                 }
             }
         }
 
-        public float GetInformedDuration()
-        {
-            float progress = Mathf.Clamp01(_step / (float)(totalSteps - 1));
-            float bucket = Mathf.Floor(progress / shiftStepPercent) * shiftStepPercent;
-            float t = (rangeShiftCurve.Evaluate(bucket) + 1f) * 0.5f;
-            return Mathf.Lerp(durationMin, durationMax, t);
-        }
+        // public float GetInformedDuration()
+        // {
+        //     float progress = Mathf.Clamp01(_step / (float)(totalSteps - 1));
+        //     float bucket = Mathf.Floor(progress / shiftStepPercent) * shiftStepPercent;
+        //     float t = (rangeShiftCurve.Evaluate(bucket) + 1f) * 0.5f;
+        //     return Mathf.Lerp(durationMin, durationMax, t);
+        // }
 
         private void MoveTowardsTarget()
         {
             if (disableMovement) return;
 
             var targetPosition = target.localPosition;
+
+            // Check active weapons - cancel if out of range
+            // for (int i = _active.Count - 1; i >= 0; i--)
+            // {
+            //     if (_active[i].Weapon.CannotReach(targetPosition))
+            //     {
+            //         CancelAndReturn(_active[i]);
+            //     }
+            // }
 
             foreach (var handle in _waiting)
             {
