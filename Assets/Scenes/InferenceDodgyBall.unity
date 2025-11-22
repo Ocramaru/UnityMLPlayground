@@ -128,11 +128,11 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 5551321667655515090, guid: e034803a552a42f478f172f393df0fc4, type: 3}
-      propertyPath: useRandomWeaponCount
-      value: 1
+      propertyPath: chanceForPrediction
+      value: 0.4
       objectReference: {fileID: 0}
     - target: {fileID: 5551321667655515090, guid: e034803a552a42f478f172f393df0fc4, type: 3}
-      propertyPath: weaponPrefabs.Array.size
+      propertyPath: useRandomWeaponCount
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8066670795870745097, guid: e034803a552a42f478f172f393df0fc4, type: 3}

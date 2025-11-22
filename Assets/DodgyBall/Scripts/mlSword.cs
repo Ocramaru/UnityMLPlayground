@@ -36,10 +36,10 @@ namespace DodgyBall.Scripts
         private static readonly Quaternion SwordOffsetDown = Quaternion.Euler(0f, 180f, 90f);
         private static readonly Quaternion SwordOffsetUp = Quaternion.Euler(0f, 0f, -90f);
         
-        public void Orient(Transform target)
+        public void Orient(Vector3 targetPosition)
         {
             Vector3 normal = SwingKeyframeSet.Instance.planeNormal.sqrMagnitude > 0f ? SwingKeyframeSet.Instance.planeNormal.normalized : Vector3.up;
-            Vector3 direction = target.localPosition - transform.localPosition;
+            Vector3 direction = targetPosition - transform.localPosition;
             
             baseRotation = Quaternion.LookRotation(direction, normal) * weaponAdjustment;
             transform.localRotation = baseRotation;
@@ -102,7 +102,7 @@ namespace DodgyBall.Scripts
             return StartCoroutine(SwingArc(start, duration, arcLength, modifiedAxis, onComplete));
         }
         
-        public Coroutine Attack(float duration, Transform target, Action onComplete)
+        public Coroutine Attack(float duration, Vector3 targetPosition, Action onComplete)
         {
             // Set zero
             _rb.linearVelocity = Vector3.zero;
@@ -113,7 +113,7 @@ namespace DodgyBall.Scripts
 
             // Calculate direction and rotation to target
             Vector3 normal = SwingKeyframeSet.Instance.planeNormal.sqrMagnitude > 0f ? SwingKeyframeSet.Instance.planeNormal.normalized : Vector3.up;
-            Vector3 direction = target.localPosition - transform.localPosition;
+            Vector3 direction = targetPosition - transform.localPosition;
             baseRotation = Quaternion.LookRotation(direction, normal) * weaponAdjustment;
             
             // Orient Swing Axis and position approach
@@ -137,18 +137,16 @@ namespace DodgyBall.Scripts
             return StartCoroutine(SwingArc(start, duration, arcLength, swingAxis, onComplete));
         }
         
-        public Vector3 GetRandomInRangePosition(Transform target)
+        public Vector3 GetRandomInRangePosition(Vector3 targetPosition)
         {
-            if (!target) return transform.localPosition;
-
             float radius = attackRange + 1;
-            return target.localPosition + Random.insideUnitSphere * radius;
+            return targetPosition + Random.insideUnitSphere * radius;
         }
         
         // Checks reach of weapon to determine if a need for repositioning
-        public bool CannotReach(Vector3 position)
+        public bool CannotReach(Vector3 targetPosition)
         {
-            return Vector3.Distance(position, transform.localPosition) > attackRange;
+            return Vector3.Distance(targetPosition, transform.localPosition) > attackRange;
         }
 
         public void ApproachTarget(Vector3 targetPosition)
@@ -190,6 +188,12 @@ namespace DodgyBall.Scripts
 
             _rb.linearVelocity = Vector3.zero;
             _rb.angularVelocity = Vector3.zero;
+        }
+
+        public float GetImpactTimeRatio()
+        {
+            // There is a lead up of 2/10ths and the arc hits at half of 8/10ths so 0.6f.
+            return 0.6f;
         }
     }
 }

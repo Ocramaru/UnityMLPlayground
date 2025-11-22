@@ -8,6 +8,7 @@ namespace DodgyBall.Scripts
         private static readonly Dictionary<int, GameObject> _startSwords = new();
         private static readonly Dictionary<int, GameObject> _endSwords = new();
         private static readonly Dictionary<int, GameObject> _planes = new();
+        private static GameObject _debugSpherePrefab;
         
         // Old debug funcs, Quaternion Directions are annoying haha
         public static void DebugStartEndSword(GameObject source, Transform owner, Quaternion start, Quaternion end)
@@ -115,6 +116,25 @@ namespace DodgyBall.Scripts
                 $"Relative End: {kf.relativeEnd} \n" +
                 $"IsUpward: {kf.isUpwardSwing}"
             );
+        }
+
+        public static void ShowPredictionSphere(Vector3 position, float lifetime = 3f)
+        {
+            if (!_debugSpherePrefab)
+            {
+                _debugSpherePrefab = Resources.Load<GameObject>("debug/Debug Sphere");
+                if (!_debugSpherePrefab)
+                {
+                    Debug.LogWarning("Debug Sphere prefab not found at Resources/debug/Debug Sphere");
+                    return;
+                }
+            }
+
+            var sphere = Object.Instantiate(_debugSpherePrefab);
+            sphere.transform.position = position;
+
+            // Auto-destroy after lifetime
+            Object.Destroy(sphere, lifetime);
         }
     }
 }
