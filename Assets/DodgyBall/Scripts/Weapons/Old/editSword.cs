@@ -1,14 +1,12 @@
 using System;
 using System.Collections;
-using Google.Protobuf.WellKnownTypes;
+using Unity.VisualScripting;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
 public class editSword : MonoBehaviour
 {
     public float AttackRange = .5f;
-    public float hitAngle = 75f;
-    [Range(0f, 1f)] public float pointOfContact = 0.25f;
     public float arcLength = 150f;
     public float Duration = 1.5f;
     
@@ -30,7 +28,12 @@ public class editSword : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.Space))
         {
-            StartCoroutine(PeformVelocitySwing(Duration, target.transform.localPosition));
+            // Stop previous swing if one is running
+            if (currentSwing != null)
+            {
+                StopCoroutine(currentSwing);
+            }
+            currentSwing = StartCoroutine(PeformVelocitySwing(Duration, target.transform.localPosition));
         }
     }
     
@@ -123,91 +126,104 @@ public class editSword : MonoBehaviour
     //     _rb.angularVelocity = Vector3.zero;
     // }
     
-       
     private float timer = 0f;
-    private float expectedHitTime = 0f;
+    private double expectedHitTime = 0f;
+    private Coroutine currentSwing = null;
     
+
     private IEnumerator PeformVelocitySwing(float duration, Vector3 targetPosition)
     {
-        timer = 0f; 
-        
-        // Linear Position
-        float distance = Vector3.Distance(transform.localPosition, targetPosition) - AttackRange; 
-        Vector3 direction = (targetPosition - transform.localPosition).normalized; 
-        
-        // Solve for contactAngle
-        Vector3 swingNormal = Vector3.forward;
-        Vector3 bladePlane  = Vector3.ProjectOnPlane(transform.right,  swingNormal).normalized;
-        Vector3 targetPlane = Vector3.ProjectOnPlane(direction, swingNormal).normalized;
-        float totalContactAngle  = Vector3.SignedAngle(bladePlane, targetPlane, swingNormal);
-        
-        // Rotations
+        timer = 0f;
+
+        // Move to target distance and orient (25% of duration)
+        float orientTime = duration * 0.25f;
+
+        // Perform swing (75% of duration)
+        float swingTime = duration - orientTime;
+
+        float contactRatio = (0.037f / swingTime) + 0.488f; // Tested a bunch of swings to get this (probably a better way)
+        float timeToContact = contactRatio * swingTime;
+        expectedHitTime = orientTime + timeToContact;
+
+        // Calculate linear movement
+        float distance = Vector3.Distance(transform.localPosition, targetPosition) - AttackRange;
+        Vector3 direction = (targetPosition - transform.localPosition).normalized;
+        Vector3 linearVelocity = direction * (distance / orientTime);
+
+        // Calculate orientation
         Quaternion startRot = _rb.rotation;
         Quaternion alignRot = Quaternion.FromToRotation(transform.right, -direction);
-        // Debug.Log($"Dot {Mathf.Abs(Vector3.Dot(transform.forward, direction))} and {Mathf.Abs(Vector3.Dot(transform.forward, direction)) < 0.001f}");
-        // if (Mathf.Abs(Vector3.Dot(transform.forward, direction)) < 0.001f) alignRot = Quaternion.AngleAxis(180f, -direction) * alignRot;
+        Quaternion rollRot = Quaternion.AngleAxis(Random.value * 45f, Vector3.right);
+    
+        // Slerp would work but it goes backwards through the target so we can instead follow similar logic
+        alignRot.ToAngleAxis(out float alignAngle, out Vector3 alignAxis);
+        if (alignAngle < 180f && alignAngle > 0.1f) { alignAngle = -(360f - alignAngle);}
 
-        // Get alignment angle contribution
-        Vector3 alignedPlaneDir = Vector3.ProjectOnPlane(alignRot * transform.right, swingNormal).normalized;
-        float alignmentAngle = Vector3.SignedAngle(bladePlane, alignedPlaneDir, swingNormal);
-        
-        float contactAngle = totalContactAngle - alignmentAngle;
-        
-        // Time needed to reach contact point in the swing arc
-        float timeToContact = (contactAngle / arcLength) * duration; 
-        expectedHitTime = timeToContact;
-        
-        Debug.Log($"Total: {totalContactAngle}°, Align: {alignmentAngle}°, Swing: {contactAngle}°");
-        Debug.Log($"Expected contact at {timeToContact}s");
-        
-        // Linear velocity to get into range
-        Vector3 linearVelocity = direction * (distance / timeToContact);
-        
-        // Quaternion rollRot = Quaternion.AngleAxis(Random.value * 45f, transform.right);
+        Debug.Log($"Expected contact at {expectedHitTime}s");
         
         float elapsed = 0f;
         while (elapsed < duration)
         {
-            float alignT = Mathf.Clamp01(elapsed / timeToContact);
-            float swingT = Mathf.Clamp01(elapsed / duration);
-            
-            Quaternion qAlign = Quaternion.Slerp(Quaternion.identity, alignRot, alignT);
-            Quaternion qSwing = Quaternion.AngleAxis(arcLength * swingT, Vector3.forward);
-            // Quaternion qRoll =  Quaternion.Slerp(Quaternion.identity, rollRot, alignT);
-            
-            Quaternion targetRotation = qAlign * startRot * qSwing;
-            
+            Quaternion targetRotation;
+
+            // Orient/Linear Movement Phase
+            if (elapsed < orientTime)
+            {
+                float t = elapsed / orientTime;
+                float currentAngle = alignAngle * t;
+                Quaternion qAlign = Quaternion.AngleAxis(currentAngle, alignAxis);
+                Quaternion qRoll = Quaternion.Slerp(Quaternion.identity, rollRot, t);
+                targetRotation = qAlign * startRot * qRoll;
+                _rb.linearVelocity = linearVelocity;
+            }
+            // Swing Phase
+            else
+            {
+                float swingT = (elapsed - orientTime) / swingTime;
+                Quaternion qSwing = Quaternion.AngleAxis(arcLength * swingT, Vector3.forward);
+                Quaternion orientedRot = alignRot * startRot * rollRot;
+                targetRotation = orientedRot * qSwing;
+                _rb.linearVelocity = Vector3.zero;
+            }
+
+            // Calculate angular velocity with stability checks
             Quaternion delta = targetRotation * Quaternion.Inverse(_rb.rotation);
             delta.ToAngleAxis(out float angleDeg, out Vector3 axis);
             if (angleDeg > 180f) angleDeg -= 360f;
-            
-            if (Mathf.Abs(angleDeg) < 0.001f) _rb.angularVelocity = Vector3.zero;
-            else _rb.angularVelocity = axis.normalized * (angleDeg * Mathf.Deg2Rad / Time.fixedDeltaTime);
-            
-            // linear movement
-            _rb.linearVelocity = elapsed < timeToContact ? linearVelocity : Vector3.zero;
+            if (Mathf.Abs(angleDeg) < 0.001f) { _rb.angularVelocity = Vector3.zero; }
+        
+            float angularSpeed = (angleDeg * Mathf.Deg2Rad) / Time.fixedDeltaTime;
+            angularSpeed = Mathf.Clamp(angularSpeed, -500f, 500f);
+            _rb.angularVelocity = axis.normalized * angularSpeed;
 
             elapsed += Time.fixedDeltaTime;
             timer += Time.fixedDeltaTime;
             yield return new WaitForFixedUpdate();
         }
-        
+
         // Stop swing
         _rb.linearVelocity = Vector3.zero;
         _rb.angularVelocity = Vector3.zero;
+        currentSwing = null;
     }
 
-    void OnCollisionEnter(Collision collision)
+    void OnTriggerEnter(Collider other)
     {
-        Debug.Log("making contact");
-        if (collision.gameObject.CompareTag("Player"))
+        if (other.gameObject.CompareTag("Player"))
         {
-            if (Mathf.Abs(timer - expectedHitTime) < 0.02f)
+            // Calculate current rotation angle in the swing
+            float orientTime = Duration * 0.25f;
+            float timeIntoSwing = Mathf.Max(0, timer - orientTime);
+            float swingTime = Duration - orientTime;
+            float swingProgress = timeIntoSwing / swingTime;
+            float currentSwingAngle = swingProgress * arcLength;
+
+            if (Mathf.Abs((float)(timer - expectedHitTime)) < 0.02f)
             {
                 Debug.Log($"Accurate Expected Hit Time");
             }
-            Debug.Log($"Timer and expectedHitTime: {timer} / {expectedHitTime}");
+            Debug.Log($"Made Contact with Player, Timer and expectedHitTime: {timer} / {expectedHitTime}");
+            Debug.Log($"Contact at swing angle: {currentSwingAngle:F2}° (progress: {swingProgress:F3}, duration: {Duration})");
         }
     }
-    
 }

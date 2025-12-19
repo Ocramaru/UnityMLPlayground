@@ -62,7 +62,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 392f3bf824a924e5b9853dbf5b24392f, type: 3}
       propertyPath: m_Name
-      value: KatanaPrefab
+      value: KatanaPrefabOld
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 392f3bf824a924e5b9853dbf5b24392f, type: 3}
       propertyPath: m_Layer
@@ -78,61 +78,19 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 392f3bf824a924e5b9853dbf5b24392f, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 2133954805490988357}
-    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 392f3bf824a924e5b9853dbf5b24392f, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 6940724812715797699}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 392f3bf824a924e5b9853dbf5b24392f, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2429823356844115151}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 392f3bf824a924e5b9853dbf5b24392f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3849312792886916892}
   m_SourcePrefab: {fileID: 100100000, guid: 392f3bf824a924e5b9853dbf5b24392f, type: 3}
 --- !u!1 &4134139538063528224 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 392f3bf824a924e5b9853dbf5b24392f, type: 3}
   m_PrefabInstance: {fileID: 3863529724334681201}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &2133954805490988357
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4134139538063528224}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3680cb80977e444eb932bb1067958d11, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::DodgyBall.Scripts.mlSword
-  arcLength: 110
-  ease:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  attackRange: 1
-  approachSpeed: 0.5
-  stoppingDistance: 0.8
-  decelerationDistance: 2
-  dampingFactor: 0.6
 --- !u!54 &6940724812715797699
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -181,3 +139,45 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.00956975, y: 0.0008, z: 0.19999999}
   m_Center: {x: 0.0012848788, y: -0.000000001335211, z: 0.07070029}
+--- !u!114 &3849312792886916892
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4134139538063528224}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3680cb80977e444eb932bb1067958d11, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DodgyBall.Scripts.mlSword
+  arcLength: 150
+  ease:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  attackRange: 1
+  approachSpeed: 5
+  stoppingDistance: 0.1
+  decelerationDistance: 1
+  dampingFactor: 0.9

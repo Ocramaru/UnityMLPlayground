@@ -5,7 +5,7 @@ using Random = UnityEngine.Random;
 
 namespace DodgyBall.Scripts
 {
-    public class mlStabbySword: MonoBehaviour
+    public class NeedsImplementationFlyingSword: MonoBehaviour
     {
         [Header("Stab")]
         public AnimationCurve ease = AnimationCurve.EaseInOut(0,0,1,1);

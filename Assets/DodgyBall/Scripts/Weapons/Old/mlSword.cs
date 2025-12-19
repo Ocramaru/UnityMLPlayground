@@ -1,11 +1,12 @@
 using System;
 using System.Collections;
+using DodgyBall.Scripts.Core;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
 namespace DodgyBall.Scripts
 {
-    public class mlSword: MonoBehaviour, IWeapon
+    public class mlSword: MonoBehaviour//, IWeapon // removed this because major changes to IWeapon
     {
         [Header("Swing")]
         [Range(0f, 360f)] public float arcLength = 150f;

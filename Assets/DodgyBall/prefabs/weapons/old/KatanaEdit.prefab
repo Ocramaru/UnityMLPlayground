@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 4796371902348226925}
   - component: {fileID: 1817662525118294387}
   - component: {fileID: 7562159822341774880}
-  - component: {fileID: 979380877647264200}
+  - component: {fileID: 482747860341276473}
   m_Layer: 0
   m_Name: KatanaEdit
   m_TagString: Untagged
@@ -83,7 +83,7 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 1
---- !u!114 &979380877647264200
+--- !u!114 &482747860341276473
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -92,14 +92,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1587140264342604815}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 13becfbc9aa56bb409715265887979ed, type: 3}
+  m_Script: {fileID: 11500000, guid: 4d35494b6f9994cc3833a3a0396b29c7, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::editSword
+  m_EditorClassIdentifier: Assembly-CSharp::DodgyBall.Scripts.Weapons.GenericSwing
+  arcLength: 150
   AttackRange: 0.5
-  HitAngle: 75
-  ArcLength: 180
-  Duration: 3
-  target: {fileID: 0}
 --- !u!1 &7417615631903465597
 GameObject:
   m_ObjectHideFlags: 0

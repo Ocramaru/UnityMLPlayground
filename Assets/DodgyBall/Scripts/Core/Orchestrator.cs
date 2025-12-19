@@ -1,66 +1,11 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-namespace DodgyBall.Scripts
+namespace DodgyBall.Scripts.Core
 {
-    // Create interface to implement in weapons
+    // Create interface to implement in weapons (moved to its own file)
     // Note all weaponPrefabs in Orchestrator must implement the IWeapon interface
-    public interface IWeapon
-    {
-        Coroutine Attack(float duration, Action onComplete);
-        Coroutine Attack(float duration, Vector3 targetPosition, Action onComplete);
-        Vector3 GetRandomInRangePosition(Vector3 targetPosition);
-        void Orient(Vector3 targetPosition);
-        bool CannotReach(Vector3 targetPosition);
-        void ApproachTarget(Vector3 targetPosition);
-        void StopApproaching();
-        float GetImpactTimeRatio(); // Returns ratio of total duration when impact occurs (0-1)
-    }
-    
-    public sealed class AttackHandle
-    {
-        public IWeapon Weapon { get; }
-        public MonoBehaviour Runner { get; }
-        public Coroutine Routine { get; private set; }
-        public bool IsActive => Routine != null;
-
-        public AttackHandle(IWeapon weapon, MonoBehaviour runner, Coroutine routine)
-        {
-            Weapon = weapon;
-            Runner = runner;
-            Routine = routine;
-        }
-        
-        // I'll just leave both so either way works
-        public void Start(Coroutine routine) => Routine = routine;
-        public void Start(float duration, Action onFinished)
-        {
-            Routine = Weapon.Attack(duration, () =>
-            {
-                Complete();
-                onFinished?.Invoke();
-            });
-        }
-        public void Start(float duration, Vector3 targetPosition, Action onFinished)
-        {
-            Routine = Weapon.Attack(duration, targetPosition, () =>
-            {
-                Complete();
-                onFinished?.Invoke();
-            });
-        }
-        public void Complete() => Routine = null;
-        
-        public void Cancel()
-        {
-            if (Routine == null) return;
-            Runner.StopCoroutine(Routine);
-            Routine = null;
-        }
-    }
     
     public class Orchestrator : MonoBehaviour
     {
@@ -69,10 +14,6 @@ namespace DodgyBall.Scripts
             public IWeapon weapon;
             public Transform transform;
         }
-
-        [Header("Attack Options")] 
-        public bool useTeleports = false; //Unimplemented Would Be Sick Tho
-        public bool disableMovement = false;
         
         [Header("Timing Stuff")]
         public int maxConcurrentSwings = 3;
@@ -86,10 +27,7 @@ namespace DodgyBall.Scripts
         
         public AnimationCurve rangeShiftCurve = AnimationCurve.Linear(0, -1, 1, 1); // How fast to shift
         [Range(0.01f, 1f)] public float shiftStepPercent = 0.10f; // When to shift % of step
-        
-        //TODO: Add a ceiling and floor maybe
-        
-        // We should implement a curve to handle how time will impact duration min max so we start off with slower durations
+        //TODO: Add a ceiling and floor maybe (How about finish implementing the range shift...)
         
         [Header("Weapons (Prefabs/Scene Objects")]
         [Tooltip("Prefabs to instantiate. Each must include a component that implements IWeapon.")]
@@ -103,11 +41,12 @@ namespace DodgyBall.Scripts
         
         [Header("Target")]
         public Transform target;
+        public float positionRange = 5f;
         private Rigidbody _targetRb;
         
         private readonly List<WeaponEntry> _weapons = new();
-        private readonly List<AttackHandle> _waiting = new();
-        private readonly List<AttackHandle> _active = new();
+        private readonly List<AttackHandler> _waiting = new();
+        private readonly List<AttackHandler> _active = new();
         
         // FixedUpdate scheduler state
         private float _intervalTimer = 0f;
@@ -119,14 +58,9 @@ namespace DodgyBall.Scripts
             if (!target) { Debug.LogWarning("Orchestrator: no target assigned."); return; }
             _targetRb = target.GetComponent<Rigidbody>();
             if (!_targetRb) Debug.LogWarning("Orchestrator: target has no Rigidbody. Predictive aiming will be disabled.");
-            if (!SwingKeyframeSet.IsLoaded) SwingKeyframeSet.LoadSingleton(); // Load the sword keyframe helper
-            Debug.Log($"Loaded {SwingKeyframeSet.Instance.Count} keyframes.");
         }
 
-        void Start()
-        {
-            CollectWeapons();
-        }
+        void Start() { CollectWeapons(); }
         
         void OnEnable()
         {
@@ -134,10 +68,7 @@ namespace DodgyBall.Scripts
             ResetScheduler();
         }
         
-        void OnDisable()
-        {
-            StopAllAttacks();
-        }
+        void OnDisable() { StopAllAttacks(); }
         
         public void ResetScheduler()
         {
@@ -145,6 +76,7 @@ namespace DodgyBall.Scripts
             _nextInterval  = Random.Range(intervalMin, intervalMax);
         }
         
+        // ReSharper disable Unity.PerformanceAnalysis
         private void CollectWeapons()
         {
             _weapons.Clear();
@@ -164,8 +96,8 @@ namespace DodgyBall.Scripts
                 
                 IWeapon iWeapon = initialized.GetComponent<IWeapon>() ?? initialized.GetComponentInChildren<IWeapon>(true);
                 if (iWeapon == null) { Debug.LogError($"Prefab '{prefab.name}' has no component implementing IWeapon."); continue; }
-                initialized.transform.localPosition = iWeapon.GetRandomInRangePosition(target.localPosition);
-                iWeapon.Orient(target.localPosition);
+                initialized.transform.localPosition = Random.insideUnitSphere * positionRange;
+                // iWeapon.Orient(target.localPosition); (no more orientation, they should handle their own directions)
                 
                 _weapons.Add(new WeaponEntry{ weapon = iWeapon, transform = initialized.transform });
             }
@@ -188,24 +120,22 @@ namespace DodgyBall.Scripts
                     continue;
                 }
                 // Not attacking yet → put into waiting
-                _waiting.Add(new AttackHandle(entry.weapon, runner, routine: null));
+                _waiting.Add(new AttackHandler(entry.weapon, runner, routine: null));
             }
         }
         
         // Create attack coroutine using handle, start it, and move to _active list
-        private void StartAttack(AttackHandle handle, float duration)
+        // ReSharper disable Unity.PerformanceAnalysis
+        private void StartAttack(AttackHandler handle, float duration)
         {
             // Add Prediction if rolled
             var targetPosition = target.localPosition;
             if (_targetRb && Random.value < chanceForPrediction)
             {
-                float impactTime = duration * handle.Weapon.GetImpactTimeRatio();
+                float impactTime = handle.Weapon.GetImpactTime(duration);
                 Vector3 predictedOffset = transform.InverseTransformDirection(_targetRb.linearVelocity) * impactTime;
                 Vector3 predictedPosition = targetPosition + predictedOffset;
-
-                // Check if predicted position is still within attack range
-                if (!handle.Weapon.CannotReach(predictedPosition)) targetPosition = predictedPosition;
-                // Okay at some point add the ability to reposition to hit this since it would be pretty epic, also consider combo swings in future
+                targetPosition = predictedPosition;
             }
 
             handle.Start(duration, targetPosition, () =>
@@ -216,15 +146,12 @@ namespace DodgyBall.Scripts
             
             _active.Add(handle);
         }
-        
-        void FixedUpdate()
+
+        private void FixedUpdate()
         {
             if (_weapons.Count == 0 || !target) return;
 
             _intervalTimer += Time.fixedDeltaTime;
-
-            // Handle movement
-            MoveTowardsTarget();
             
             // Handle Attacks
             if (_intervalTimer >= _nextInterval)
@@ -268,27 +195,10 @@ namespace DodgyBall.Scripts
         //     float t = (rangeShiftCurve.Evaluate(bucket) + 1f) * 0.5f;
         //     return Mathf.Lerp(durationMin, durationMax, t);
         // }
-
-        private void MoveTowardsTarget()
-        {
-            if (disableMovement) return;
-
-            var targetPosition = target.localPosition;
-
-            foreach (var handle in _waiting)
-            {
-                if (handle.Weapon.CannotReach(targetPosition))
-                {
-                    handle.Weapon.ApproachTarget(targetPosition);
-                } else {
-                    handle.Weapon.StopApproaching();
-                }
-            }
-        }
         
         
         // Might as well add some helpers
-        private void CancelAndReturn(AttackHandle handle)
+        private void CancelAndReturn(AttackHandler handle)
         {
             handle.Cancel();
             _active.Remove(handle);
@@ -325,8 +235,7 @@ namespace DodgyBall.Scripts
 
             foreach (var entry in _weapons)
             {
-                if (entry.transform != null)
-                    Destroy(entry.transform.gameObject);
+                if (entry.transform) Destroy(entry.transform.gameObject);
             }
 
             CollectWeapons();

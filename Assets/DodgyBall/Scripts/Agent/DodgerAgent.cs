@@ -1,4 +1,5 @@
 using System;
+using DodgyBall.Scripts.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Unity.MLAgents;
@@ -107,7 +108,12 @@ namespace DodgyBall.Scripts
             if (other.gameObject.CompareTag("Wall")) {
                 Vector3 normal = other.contacts[0].normal;
                 _rb.linearVelocity = Vector3.Reflect(_rb.linearVelocity, normal);
-            } else if (other.gameObject.CompareTag("Weapon")) {
+            }
+        }
+
+        private void OnTriggerEnter(Collider other)
+        {
+            if (other.gameObject.CompareTag("Weapon")) {
                 EndEpisode();
             }
         }
