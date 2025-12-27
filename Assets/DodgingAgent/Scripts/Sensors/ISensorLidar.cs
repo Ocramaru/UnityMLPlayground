@@ -1,8 +1,8 @@
 using System.Collections.Generic;
-using UnityEngine;
 using Unity.MLAgents.Sensors;
+using UnityEngine;
 
-namespace DodgyBall.Scripts.Sensors
+namespace DodgingAgent.Scripts.Sensors
 {
     /// <summary>
     /// Lidar sensor using spherical raycast coverage

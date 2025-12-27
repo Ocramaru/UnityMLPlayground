@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace DodgyBall.Scripts.Utilities
+namespace DodgingAgent.Scripts.Utilities
 {
     /// <summary>
     /// Forwards collision events to a target GameObject

@@ -1,7 +1,8 @@
-using UnityEngine;
+using DodgingAgent.Scripts.Utilities;
 using Unity.MLAgents.Sensors;
+using UnityEngine;
 
-namespace DodgyBall.Scripts.Sensors
+namespace DodgingAgent.Scripts.Sensors
 {
     /// <summary>
     /// Gyroscope sensor measuring angular velocity in local space
@@ -40,8 +41,8 @@ namespace DodgyBall.Scripts.Sensors
             if (_includeNoise)
             {
                 float sqrtDt = Mathf.Sqrt(Time.fixedDeltaTime);
-                _bias += Utilities.GaussianRandom.SampleVector(_randomWalk * sqrtDt); // update bias (random walk/brownian)
-                localAngularVelocity += _bias + Utilities.GaussianRandom.SampleVector(_noiseDensity / sqrtDt); // add bias + white noise
+                _bias += GaussianRandom.SampleVector(_randomWalk * sqrtDt); // update bias (random walk/brownian)
+                localAngularVelocity += _bias + GaussianRandom.SampleVector(_noiseDensity / sqrtDt); // add bias + white noise
             }
 
             writer.Add(localAngularVelocity);

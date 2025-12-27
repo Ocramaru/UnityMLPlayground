@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 using Debug = UnityEngine.Debug;
 using Random = UnityEngine.Random;
 
-namespace DodgyBall.Scripts.Utilities
+namespace DodgingAgent.Scripts.Utilities
 {
     // ENHANCEMENT: Further performance improvement can be obtained by using a less precise method
     // whereby we represent the distribution curve as a piecewise linear curve, i.e. approximate

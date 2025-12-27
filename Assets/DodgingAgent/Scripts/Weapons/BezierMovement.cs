@@ -1,10 +1,10 @@
 using System;
 using System.Collections;
-using DodgyBall.Scripts.Core;
-using DodgyBall.Scripts.Utilities;
+using DodgingAgent.Scripts.Core;
+using DodgingAgent.Scripts.Utilities;
 using UnityEngine;
 
-namespace DodgyBall.Scripts.Weapons
+namespace DodgingAgent.Scripts.Weapons
 {
     public class BezierMovement: MonoBehaviour, IWeapon
     {
@@ -80,8 +80,8 @@ namespace DodgyBall.Scripts.Weapons
         private IEnumerator HandleBezierMovement(float duration, params Vector3[] controlPoints)
         {
             int numSamples = 50;
-            Vector3[] sampledPoints = Utilities.Bezier.SamplePoints(numSamples, controlPoints);
-            Vector3[] sampledTangents = Utilities.Bezier.SampleTangents(numSamples, controlPoints);
+            Vector3[] sampledPoints = Bezier.SamplePoints(numSamples, controlPoints);
+            Vector3[] sampledTangents = Bezier.SampleTangents(numSamples, controlPoints);
 
             yield return HandleBezierMovementWithSamples(duration, sampledPoints, sampledTangents);
         }

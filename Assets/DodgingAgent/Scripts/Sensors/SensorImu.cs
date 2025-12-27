@@ -1,9 +1,9 @@
 // IMU Noise Model based on Kalibr: https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model
 
-using UnityEngine;
 using Unity.MLAgents.Sensors;
+using UnityEngine;
 
-namespace DodgyBall.Scripts.Sensors
+namespace DodgingAgent.Scripts.Sensors
 {
     /// <summary>
     /// IMU SensorComponent that creates modular ISensor implementations

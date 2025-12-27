@@ -1,7 +1,6 @@
 using UnityEngine;
-using Unity.MLAgents.Sensors;
 
-namespace DodgyBall.Scripts.Core
+namespace DodgingAgent.Scripts.Core
 {
     public class ObservationProvider
     {

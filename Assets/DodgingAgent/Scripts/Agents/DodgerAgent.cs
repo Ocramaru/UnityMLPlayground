@@ -1,12 +1,11 @@
-using System;
-using DodgyBall.Scripts.Core;
+using DodgingAgent.Scripts.Core;
+using Unity.MLAgents;
+using Unity.MLAgents.Actuators;
+using Unity.MLAgents.Sensors;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using Unity.MLAgents;
-using Unity.MLAgents.Sensors;
-using Unity.MLAgents.Actuators;
 
-namespace DodgyBall.Scripts.Agents
+namespace DodgingAgent.Scripts.Agents
 {
     public class DodgerAgent : Agent
     {

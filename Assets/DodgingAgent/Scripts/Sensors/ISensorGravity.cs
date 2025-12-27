@@ -1,7 +1,7 @@
-using UnityEngine;
 using Unity.MLAgents.Sensors;
+using UnityEngine;
 
-namespace DodgyBall.Scripts.Sensors
+namespace DodgingAgent.Scripts.Sensors
 {
     /// <summary>
     /// Gravity sensor measuring the direction to ground in local space

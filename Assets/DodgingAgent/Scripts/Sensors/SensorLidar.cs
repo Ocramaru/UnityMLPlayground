@@ -1,7 +1,7 @@
-using UnityEngine;
 using Unity.MLAgents.Sensors;
+using UnityEngine;
 
-namespace DodgyBall.Scripts.Sensors
+namespace DodgingAgent.Scripts.Sensors
 {
     /// <summary>
     /// Lidar SensorComponent that creates a modular ISensorLidar implementation

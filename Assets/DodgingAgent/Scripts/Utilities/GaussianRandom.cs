@@ -4,7 +4,7 @@
 
 using UnityEngine;
 
-namespace DodgyBall.Scripts.Utilities
+namespace DodgingAgent.Scripts.Utilities
 {
     public static class GaussianRandom
     {

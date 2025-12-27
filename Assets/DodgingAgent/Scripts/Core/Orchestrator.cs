@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-namespace DodgyBall.Scripts.Core
+namespace DodgingAgent.Scripts.Core
 {
     // Create interface to implement in weapons (moved to its own file)
     // Note all weaponPrefabs in Orchestrator must implement the IWeapon interface

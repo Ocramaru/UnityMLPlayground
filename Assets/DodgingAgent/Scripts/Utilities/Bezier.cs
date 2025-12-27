@@ -1,7 +1,7 @@
-using UnityEngine;
 using System;
+using UnityEngine;
 
-namespace DodgyBall.Scripts.Utilities
+namespace DodgingAgent.Scripts.Utilities
 {
     public static class Bezier
     {

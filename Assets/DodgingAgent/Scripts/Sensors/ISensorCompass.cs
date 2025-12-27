@@ -1,7 +1,8 @@
-using UnityEngine;
+using DodgingAgent.Scripts.Utilities;
 using Unity.MLAgents.Sensors;
+using UnityEngine;
 
-namespace DodgyBall.Scripts.Sensors
+namespace DodgingAgent.Scripts.Sensors
 {
     /// <summary>
     /// Compass/Magnetometer sensor measuring heading angle (yaw)
@@ -32,7 +33,7 @@ namespace DodgyBall.Scripts.Sensors
 
             if (_includeNoise)
             {
-                heading += Utilities.GaussianRandom.Sample() * _noiseLevel; // white noise
+                heading += GaussianRandom.Sample() * _noiseLevel; // white noise
             }
 
             // Normalize to [-180, 180]

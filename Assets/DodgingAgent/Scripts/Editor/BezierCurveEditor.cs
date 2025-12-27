@@ -1,10 +1,10 @@
 using System;
-using UnityEngine;
+using DodgingAgent.Scripts.Utilities;
 using UnityEditor;
-using DodgyBall.Scripts.Utilities;
+using UnityEngine;
 using Random = UnityEngine.Random;
 
-namespace DodgyBall.Scripts.Editor
+namespace DodgingAgent.Scripts.Editor
 {
     public class BezierCurveEditor : EditorWindow
     {

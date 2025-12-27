@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace DodgyBall.Scripts.Core
+namespace DodgingAgent.Scripts.Core
 {
     public sealed class AttackHandler
     {

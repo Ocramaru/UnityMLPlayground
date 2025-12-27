@@ -1,10 +1,10 @@
 using System;
 using System.Collections;
-using DodgyBall.Scripts.Core;
+using DodgingAgent.Scripts.Core;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-namespace DodgyBall.Scripts.Weapons
+namespace DodgingAgent.Scripts.Weapons
 {
     public class GenericSwing: MonoBehaviour, IWeapon
     {

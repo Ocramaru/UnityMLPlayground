@@ -1,7 +1,8 @@
-using UnityEngine;
+using DodgingAgent.Scripts.Utilities;
 using Unity.MLAgents.Sensors;
+using UnityEngine;
 
-namespace DodgyBall.Scripts.Sensors
+namespace DodgingAgent.Scripts.Sensors
 {
     /// <summary>
     /// Barometer sensor measuring altitude (y position)
@@ -32,7 +33,7 @@ namespace DodgyBall.Scripts.Sensors
 
             if (_includeNoise)
             {
-                altitude += Utilities.GaussianRandom.Sample() * _noiseLevel; // white noise
+                altitude += GaussianRandom.Sample() * _noiseLevel; // white noise
             }
 
             writer.AddList(new[] { altitude });

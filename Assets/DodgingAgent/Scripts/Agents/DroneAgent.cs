@@ -1,12 +1,11 @@
+using MBaske;
+using Unity.MLAgents;
+using Unity.MLAgents.Actuators;
+using Unity.MLAgents.Sensors;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using Unity.MLAgents;
-using Unity.MLAgents.Sensors;
-using Unity.MLAgents.Actuators;
-using MBaske;
-using Unity.VisualScripting;
 
-namespace DodgyBall.Scripts.Agents
+namespace DodgingAgent.Scripts.Agents
 {
     /// <summary>
     /// Drone agent for ML-Agents training

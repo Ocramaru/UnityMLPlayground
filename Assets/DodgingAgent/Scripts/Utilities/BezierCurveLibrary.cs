@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace DodgyBall.Scripts.Utilities
+namespace DodgingAgent.Scripts.Utilities
 {
     [Serializable]
     public struct BezierCurve
