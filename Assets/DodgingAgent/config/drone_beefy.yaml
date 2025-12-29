@@ -27,4 +27,4 @@ behaviors:
     keep_checkpoints: 10
     checkpoint_interval: 50000
 torch_settings:
-  device: cuda
+  device: cpu

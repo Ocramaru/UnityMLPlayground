@@ -847,7 +847,7 @@ PrefabInstance:
     - target: {fileID: 2676004649693130315, guid: ccb30af37f1334b7e9dbe4d29d84ddfa, type: 3}
       propertyPath: m_Model
       value: 
-      objectReference: {fileID: 5022602860645237092, guid: 0faeee2e055664a30bef60b37993e95d, type: 3}
+      objectReference: {fileID: 0}
     - target: {fileID: 2676004649693130315, guid: ccb30af37f1334b7e9dbe4d29d84ddfa, type: 3}
       propertyPath: m_BehaviorName
       value: DroneAgent
@@ -893,8 +893,20 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6329606410971591188, guid: ccb30af37f1334b7e9dbe4d29d84ddfa, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6329606410971591188, guid: ccb30af37f1334b7e9dbe4d29d84ddfa, type: 3}
       propertyPath: maxDistance
       value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 8083775558872480280, guid: ccb30af37f1334b7e9dbe4d29d84ddfa, type: 3}
+      propertyPath: includeNoise
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8083775558872480280, guid: ccb30af37f1334b7e9dbe4d29d84ddfa, type: 3}
+      propertyPath: includeCompass
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
