@@ -98,8 +98,13 @@ InitTestScene*.unity*
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
 
+# Ide and junk
 .idea/
 .DS_Store
+__pycache__/
+
+# local/cloned repo stuff
 ml-agents/
 results/
 local/
+builds/

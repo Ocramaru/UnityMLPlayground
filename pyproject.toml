@@ -11,10 +11,13 @@ dependencies = [
     "gym==0.26.2",
     "protobuf==3.20.3",
     "numpy>=1.23.5",
-    "tensorboard"
+    "tensorboard",
+    "onnxscript"
 ]
 
 [tool.uv.sources]
+mlagents = { path = "ml-agents/ml-agents", editable = true }
+mlagents-envs = { path = "ml-agents/ml-agents-envs", editable = true }
 torch = [
   { index = "pytorch-cpu", extra = "cpu" },
   { index = "pytorch-cu128", extra = "cu128" },
@@ -37,6 +40,7 @@ conflicts = [
 ]
 override-dependencies = [
   "grpcio>=1.60",
+  "onnx>=1.16",
 ]
 
 [[tool.uv.index]]
