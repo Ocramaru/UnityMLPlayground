@@ -102,6 +102,7 @@ InitTestScene*.unity*
 .idea/
 .DS_Store
 __pycache__/
+.claude/
 
 # local/cloned repo stuff
 ml-agents/

@@ -21,10 +21,10 @@ behaviors:
       extrinsic:
         gamma: 0.99
         strength: 1.0
-    max_steps: 500000
+    max_steps: 3000000
     time_horizon: 128
     summary_freq: 10000
-    keep_checkpoints: 10
-    checkpoint_interval: 50000
+    keep_checkpoints: 4
+    checkpoint_interval: 250000
 torch_settings:
-  device: cpu
+  device: cuda
