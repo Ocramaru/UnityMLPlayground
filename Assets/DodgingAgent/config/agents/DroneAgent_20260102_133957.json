@@ -1,0 +1,137 @@
+{
+    "exportTime": "2026-01-02 13:40:04",
+    "agentType": "DroneAgent",
+    "sceneName": "Inference",
+    "agentParameters": [
+        {
+            "key": "MaxStep",
+            "value": "1000"
+        },
+        {
+            "key": "StepCount",
+            "value": "0"
+        },
+        {
+            "key": "CompletedEpisodes",
+            "value": "0"
+        }
+    ],
+    "sensors": [
+        {
+            "componentType": "SensorLidar",
+            "parameters": [
+                {
+                    "key": "cardinalSensors",
+                    "value": "True"
+                },
+                {
+                    "key": "edgeSensors",
+                    "value": "True"
+                },
+                {
+                    "key": "cornerSensors",
+                    "value": "True"
+                },
+                {
+                    "key": "drawGizmos",
+                    "value": "False"
+                },
+                {
+                    "key": "maxDistance",
+                    "value": "5"
+                }
+            ]
+        },
+        {
+            "componentType": "SensorImu",
+            "parameters": [
+                {
+                    "key": "includeNoise",
+                    "value": "False"
+                },
+                {
+                    "key": "includeGyroscope",
+                    "value": "True"
+                },
+                {
+                    "key": "includeAcceleration",
+                    "value": "True"
+                },
+                {
+                    "key": "includeBarometer",
+                    "value": "True"
+                },
+                {
+                    "key": "includeCompass",
+                    "value": "False"
+                },
+                {
+                    "key": "includeGravity",
+                    "value": "True"
+                },
+                {
+                    "key": "gyroscopeNoiseDensity",
+                    "value": "0.01"
+                },
+                {
+                    "key": "gyroscopeRandomWalk",
+                    "value": "0.001"
+                },
+                {
+                    "key": "accelerometerNoiseDensity",
+                    "value": "0.02"
+                },
+                {
+                    "key": "accelerometerRandomWalk",
+                    "value": "0.002"
+                },
+                {
+                    "key": "barometerNoise",
+                    "value": "0.5"
+                },
+                {
+                    "key": "compassNoise",
+                    "value": "2"
+                }
+            ]
+        }
+    ],
+    "behaviorParameters": [
+        {
+            "key": "TeamId",
+            "value": "0"
+        },
+        {
+            "key": "InferenceDevice",
+            "value": "Default"
+        },
+        {
+            "key": "BehaviorType",
+            "value": "Default"
+        },
+        {
+            "key": "BehaviorName",
+            "value": "DroneAgent"
+        },
+        {
+            "key": "UseChildSensors",
+            "value": "False"
+        },
+        {
+            "key": "DeterministicInference",
+            "value": "False"
+        },
+        {
+            "key": "UseChildActuators",
+            "value": "True"
+        },
+        {
+            "key": "ObservableAttributeHandling",
+            "value": "Ignore"
+        },
+        {
+            "key": "FullyQualifiedBehaviorName",
+            "value": "DroneAgent?team=0"
+        }
+    ]
+}

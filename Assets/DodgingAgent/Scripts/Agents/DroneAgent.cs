@@ -43,15 +43,27 @@ namespace DodgingAgent.Scripts.Agents
 
         public override void OnActionReceived(ActionBuffers actionBuffers)
         {
-            multicopter.UpdateThrust(actionBuffers.ContinuousActions.Array);
+            // Handle thrust inputs
+            float[] actions = actionBuffers.ContinuousActions.Array;
+            float[] mappedThrust = new float[actions.Length];
 
-            // Position holding reward - main objective
-            // float distanceFromInitial = Vector3.Distance(multicopter.Frame.position, initialPosition);
-            // AddReward(-distanceFromInitial * 0.1f);
-
-            // Stability rewards
-            AddReward(multicopter.Frame.up.y * 0.5f);
-            AddReward(multicopter.Rigidbody.linearVelocity.magnitude * -0.1f);
+            for (int i = 0; i < actions.Length; i++)
+            {
+                mappedThrust[i] = Mathf.Lerp(-0.4f, 1f, (actions[i] + 1f) * 0.5f);
+            }
+            multicopter.UpdateThrust(mappedThrust);
+            
+            // Position holding reward
+            float distanceFromInitial = Vector3.Distance(multicopter.Frame.position, initialPosition);
+            float positionReward = Mathf.Exp(-distanceFromInitial * 0.5f);
+            AddReward(positionReward * 0.1f);
+            
+            // Stay upright
+            AddReward(Mathf.Clamp01(multicopter.Frame.up.y) * 0.15f);
+            
+            // Don't move to crazily
+            float velocityMag = multicopter.Rigidbody.linearVelocity.magnitude;
+            if (velocityMag > 0.5f) { AddReward(-(velocityMag - 0.5f) * 0.1f); }
             AddReward(multicopter.Rigidbody.angularVelocity.magnitude * -0.05f);
         }
 
