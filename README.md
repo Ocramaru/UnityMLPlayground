@@ -109,6 +109,7 @@ This project uses third-party assets and code:
 
 ### Assets
 - **Katana Model**: ["katana"](https://skfb.ly/oov7S) by Rubixboy101 - CC BY 4.0
+- **Warehouse FBX Model**: ["Warehouse FBX Model Free"](https://skfb.ly/oVOIy) by Nicholas-3D - CC BY 4.0
 
 ### Code Libraries
 - **ml-drone-collection**: by MBaske - MIT License

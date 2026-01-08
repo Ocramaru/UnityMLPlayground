@@ -15,6 +15,14 @@ This document provides full attribution for all third-party assets and code used
 - **Usage**: Weapon model used in the project
 - **Location**: `Assets/ThirdParty/katana.fbx`, `Assets/ThirdParty/KatanaEdit.*`
 
+### Warehouse FBX Model
+
+- **Title**: "Warehouse FBX Model Free"
+- **Author**: Nicholas-3D
+- **Source**: https://skfb.ly/oVOIy
+- **License**: [Creative Commons Attribution 4.0 International (CC BY 4.0)](http://creativecommons.org/licenses/by/4.0/)
+- **Usage**: Environment model used in the project
+
 ---
 
 ## Code Libraries
