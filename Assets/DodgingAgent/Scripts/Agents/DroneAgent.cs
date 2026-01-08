@@ -16,6 +16,7 @@ namespace DodgingAgent.Scripts.Agents
 
         private Resetter resetter;
         private Vector3 initialPosition;
+        public float resetDistance = 50f;
 
         public override void Initialize()
         {
@@ -43,6 +44,10 @@ namespace DodgingAgent.Scripts.Agents
 
         public override void OnActionReceived(ActionBuffers actionBuffers)
         {
+            // Check if rotor scales are set
+            var rotor = multicopter.Rotors[0];
+            Debug.Log($"{gameObject.name} - Rotor ThrustScale: {rotor.ThrustScale}, TorqueScale: {rotor.TorqueScale}, ThrustResponse: {rotor.ThrustResponse}");
+
             // Handle thrust inputs
             float[] actions = actionBuffers.ContinuousActions.Array;
             float[] mappedThrust = new float[actions.Length];
@@ -65,15 +70,22 @@ namespace DodgingAgent.Scripts.Agents
             float velocityMag = multicopter.Rigidbody.linearVelocity.magnitude;
             if (velocityMag > 0.5f) { AddReward(-(velocityMag - 0.5f) * 0.1f); }
             AddReward(multicopter.Rigidbody.angularVelocity.magnitude * -0.05f);
+            
+            // Check for distance
+            if ((initialPosition - multicopter.Frame.position).magnitude > resetDistance)
+            {
+                EndEpisode();
+            }
         }
 
         private void OnCollisionEnter(Collision collision)
         {
             Debug.Log($"HandleCollision hit {collision.gameObject.name}");
-            if (collision.gameObject.CompareTag("Wall")) {
-                AddReward(-1f); // Penalty for hitting wall, but continue episode
-                resetter.Reset();
-            }
+            // if (collision.gameObject.CompareTag("Wall")) {
+            //     AddReward(-1f); // Penalty for hitting wall, but continue episode
+            //     resetter.Reset();
+            // }
+            // Removed for now, thinking about doing max distance instead
         }
         
         public override void Heuristic(in ActionBuffers actionsOut)

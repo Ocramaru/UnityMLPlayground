@@ -324,7 +324,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &6569019747155000314
 Transform:
   m_ObjectHideFlags: 0
@@ -851,6 +851,10 @@ PrefabInstance:
     - target: {fileID: 2676004649693130315, guid: ccb30af37f1334b7e9dbe4d29d84ddfa, type: 3}
       propertyPath: m_BehaviorName
       value: DroneAgent
+      objectReference: {fileID: 0}
+    - target: {fileID: 2676004649693130315, guid: ccb30af37f1334b7e9dbe4d29d84ddfa, type: 3}
+      propertyPath: m_BrainParameters.NumStackedVectorObservations
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 6188825282854315577, guid: ccb30af37f1334b7e9dbe4d29d84ddfa, type: 3}
       propertyPath: m_LocalPosition.x

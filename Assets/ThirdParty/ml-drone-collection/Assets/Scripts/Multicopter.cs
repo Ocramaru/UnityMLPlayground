@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 namespace MBaske
 {
@@ -28,28 +28,26 @@ namespace MBaske
         [SerializeField, Range(-1f, 1f)]
         private float yaw;
 
+        // Note: Modification due to OnValidate not being called by num_area creation
         private void OnValidate()
         {
-            for (int i = 0; i < Rotors.Length; i++)
-            {
-                Rotors[i].Reversable = reversableThrust;
-                Rotors[i].ThrustResponse = thrustResponse;
-                Rotors[i].ThrustScale = thrustScale;
-                Rotors[i].TorqueScale = torqueScale;
-            }
-
             Initialize();
-            UpdateTilt(pitch, roll, yaw);
         }
 
         public void Initialize()
         {
             Rigidbody = Frame.GetComponent<Rigidbody>();
-
             for (int i = 0; i < Rotors.Length; i++)
             {
+                // Set Propterties
+                Rotors[i].Reversable = reversableThrust;
+                Rotors[i].ThrustResponse = thrustResponse;
+                Rotors[i].ThrustScale = thrustScale;
+                Rotors[i].TorqueScale = torqueScale;
                 Rotors[i].Initialize();
             }
+
+            UpdateTilt(pitch, roll, yaw);
         }
 
         public void OnReset()
