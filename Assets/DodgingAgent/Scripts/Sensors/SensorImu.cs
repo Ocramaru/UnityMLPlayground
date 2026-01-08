@@ -1,4 +1,6 @@
 // IMU Noise Model based on Kalibr: https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model
+// TODO: Add GPS sensor for noisy position relative to spawn
+// TODO: Add dead-reckoning position estimate from velocity integration (accumulates error)
 
 using Unity.MLAgents.Sensors;
 using UnityEngine;

@@ -1,5 +1,8 @@
 using Unity.MLAgents.Sensors;
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace DodgingAgent.Scripts.Sensors
 {
@@ -47,13 +50,30 @@ namespace DodgingAgent.Scripts.Sensors
             if (!drawGizmos) return;
             if (_lidarSensor == null) return;
             if (!referenceTransform) referenceTransform = transform;
-        
-            Gizmos.color = Color.magenta;
-        
+
+            Vector3 origin = referenceTransform.position;
+
             foreach (var direction in _lidarSensor.GetRayDirections())
             {
                 Vector3 worldDirection = referenceTransform.TransformDirection(direction);
-                Gizmos.DrawLine(referenceTransform.position, referenceTransform.position + worldDirection * maxDistance);
+                bool hit = Physics.Raycast(origin, worldDirection, out RaycastHit hitInfo, maxDistance, detectionLayers);
+                float distance; Vector3 endPoint;
+                if (hit) {
+                    Gizmos.color = Color.green;
+                    distance = hitInfo.distance;
+                    endPoint = hitInfo.point;
+                } else {
+                    Gizmos.color = Color.magenta;
+                    distance = maxDistance;
+                    endPoint = origin + worldDirection * maxDistance;
+                }
+
+                Gizmos.DrawLine(origin, endPoint);
+
+#if UNITY_EDITOR
+                Vector3 labelPos = origin + worldDirection * (distance * 0.5f) + Vector3.up * 0.2f;
+                Handles.Label(labelPos, $"{distance:F1}m");
+#endif
             }
         }
     }

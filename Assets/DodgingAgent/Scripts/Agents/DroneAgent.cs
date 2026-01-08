@@ -1,3 +1,4 @@
+using System;
 using MBaske;
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
@@ -7,6 +8,12 @@ using UnityEngine.InputSystem;
 
 namespace DodgingAgent.Scripts.Agents
 {
+    public enum TrainingObjective
+    {
+        HoldPosition,
+        Explore
+    }
+    
     /// <summary>
     /// Drone agent for ML-Agents training
     /// </summary>
@@ -14,10 +21,30 @@ namespace DodgingAgent.Scripts.Agents
     {
         [SerializeField] private Multicopter multicopter;
 
+        [Header("Training Configuration")]
+        [SerializeField] private TrainingObjective objective = TrainingObjective.HoldPosition;
+        [SerializeField] private float resetDistance = 50f;
+        [SerializeField, Range(0f, 1f)] private float objectiveRewardWeight = 0.3f;
+
+        [Tooltip("Target distance per step (m). Gets max reward at this speed in Explore mode.")]
+        [SerializeField] private float optimalStepDistance = 1f;
+
+        [Header("Success Condition")]
+        [Tooltip("HoldPosition: steps to hold near spawn")]
+        [SerializeField] private float successHoldSteps = 500f;
+        [Tooltip("Explore: total meters to travel")]
+        [SerializeField] private float successExploreDistance = 100f;
+        [Tooltip("HoldPosition: max distance from spawn (m) to count as holding")]
+        [SerializeField] private float holdThreshold = 1f;
+        [Tooltip("Bonus reward for completing goal (faster = better via less penalty time)")]
+        [SerializeField] private float successBonus = 50f;
+
         private Resetter resetter;
         private Vector3 initialPosition;
-        public float resetDistance = 50f;
-
+        private Vector3 lastPosition;
+        private float goalProgress;
+        private float successGoal;
+        
         public override void Initialize()
         {
             multicopter.Initialize();
@@ -28,6 +55,11 @@ namespace DodgingAgent.Scripts.Agents
         {
             resetter.Reset();
             initialPosition = multicopter.Frame.position;
+            lastPosition = multicopter.Frame.position;
+            goalProgress = 0f;
+
+            // Set success goal based on objective
+            successGoal = objective == TrainingObjective.HoldPosition ? successHoldSteps : successExploreDistance; // TODO: Change if I add more Objectives
         }
 
         public override void CollectObservations(VectorSensor sensor)
@@ -44,10 +76,6 @@ namespace DodgingAgent.Scripts.Agents
 
         public override void OnActionReceived(ActionBuffers actionBuffers)
         {
-            // Check if rotor scales are set
-            var rotor = multicopter.Rotors[0];
-            Debug.Log($"{gameObject.name} - Rotor ThrustScale: {rotor.ThrustScale}, TorqueScale: {rotor.TorqueScale}, ThrustResponse: {rotor.ThrustResponse}");
-
             // Handle thrust inputs
             float[] actions = actionBuffers.ContinuousActions.Array;
             float[] mappedThrust = new float[actions.Length];
@@ -57,21 +85,58 @@ namespace DodgingAgent.Scripts.Agents
                 mappedThrust[i] = Mathf.Lerp(-0.4f, 1f, (actions[i] + 1f) * 0.5f);
             }
             multicopter.UpdateThrust(mappedThrust);
-            
-            // Position holding reward
-            float distanceFromInitial = Vector3.Distance(multicopter.Frame.position, initialPosition);
-            float positionReward = Mathf.Exp(-distanceFromInitial * 0.5f);
-            AddReward(positionReward * 0.1f);
-            
+
+            switch (objective)
+            {
+                case TrainingObjective.HoldPosition: // Position holding reward (exponential decaying reward)
+                    float distanceFromInitial = Vector3.Distance(multicopter.Frame.position, initialPosition);
+                    float positionReward = Mathf.Exp(-distanceFromInitial * 0.5f);
+                    AddReward(positionReward * objectiveRewardWeight);
+
+                    // Calculate Goal Progress
+                    if (distanceFromInitial <= holdThreshold)
+                    {
+                        goalProgress++;
+                        if (goalProgress >= successGoal)
+                        {
+                            AddReward(successBonus);
+                            // Debug.Log($"{gameObject.name} SUCCESS! Held position for {goalProgress} steps. Final reward: {GetCumulativeReward():F2}");
+                            EndEpisode();
+                        }
+                    } else { goalProgress = 0; } // Reset on drift
+                    break;
+
+                case TrainingObjective.Explore: // distance traveled this step (exponential decaying reward)
+                    float distanceTraveled = Vector3.Distance(multicopter.Frame.position, lastPosition);
+                    float explorationReward = Mathf.Exp(-Mathf.Abs(distanceTraveled - optimalStepDistance) * 0.5f);
+                    AddReward(explorationReward * objectiveRewardWeight);
+                    lastPosition = multicopter.Frame.position;
+
+                    // Calculate Goal Progress
+                    goalProgress += distanceTraveled;
+                    if (goalProgress >= successGoal)
+                    {
+                        AddReward(successBonus);
+                        // Debug.Log($"{gameObject.name} SUCCESS! Explored {goalProgress:F2}m in {StepCount} steps. Final reward: {GetCumulativeReward():F2}");
+                        EndEpisode();
+                    }
+                    break;
+
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+            // Debug.Log($"{gameObject.name} - Goal Progress: {goalProgress:F2} / {successGoal:F2} ({(goalProgress/successGoal*100f):F1}%)");
+            // TODO: Make a ui bar to view progress on inference
+
             // Stay upright
-            AddReward(Mathf.Clamp01(multicopter.Frame.up.y) * 0.15f);
+            AddReward(Mathf.Clamp01(multicopter.Frame.up.y) * 0.75f);
             
             // Don't move to crazily
             float velocityMag = multicopter.Rigidbody.linearVelocity.magnitude;
             if (velocityMag > 0.5f) { AddReward(-(velocityMag - 0.5f) * 0.1f); }
             AddReward(multicopter.Rigidbody.angularVelocity.magnitude * -0.05f);
             
-            // Check for distance
+            // Check for distance (Could punish for going to far. Think about it.)
             if ((initialPosition - multicopter.Frame.position).magnitude > resetDistance)
             {
                 EndEpisode();
@@ -80,12 +145,15 @@ namespace DodgingAgent.Scripts.Agents
 
         private void OnCollisionEnter(Collision collision)
         {
-            Debug.Log($"HandleCollision hit {collision.gameObject.name}");
-            // if (collision.gameObject.CompareTag("Wall")) {
-            //     AddReward(-1f); // Penalty for hitting wall, but continue episode
-            //     resetter.Reset();
-            // }
-            // Removed for now, thinking about doing max distance instead
+            // Debug.Log($"HandleCollision hit {collision.gameObject.name}: Tag={collision.gameObject.tag}");
+            if (collision.gameObject.CompareTag("Wall"))
+            {
+                var currentReward = GetCumulativeReward();
+                float crashPenalty = -(currentReward * 1.1f); // Lose all (reward + 10%)
+                AddReward(crashPenalty);
+                // Debug.Log($"{gameObject.name} crashed after {StepCount} steps with reward {currentReward:F2}, penalty: {crashPenalty:F2}, final: {GetCumulativeReward():F2}");
+                EndEpisode();
+            }
         }
         
         public override void Heuristic(in ActionBuffers actionsOut)
