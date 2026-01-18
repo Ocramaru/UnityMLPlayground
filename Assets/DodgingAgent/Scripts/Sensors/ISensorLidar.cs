@@ -84,19 +84,25 @@ namespace DodgingAgent.Scripts.Sensors
 
         public int Write(ObservationWriter writer)
         {
+            float[] observations = new float[_rayDirections.Length];
+            int index = 0;
+            
             foreach (var direction in _rayDirections)
             {
                 Vector3 worldDirection = _referenceTransform.TransformDirection(direction);
 
-                if (Physics.Raycast(_referenceTransform.position, worldDirection, out RaycastHit hit, _maxDistance, _detectionLayers))
+                if (Physics.Raycast(_referenceTransform.position, worldDirection, out RaycastHit hit, _maxDistance,
+                        _detectionLayers))
                 {
                     // Normalized distance: 1.0 = very close, 0.0 = at max distance
-                    float normalizedDistance = 1f - (hit.distance / _maxDistance);
-                    writer.AddList(new[] { normalizedDistance });
+                    observations[index] = 1f - (hit.distance / _maxDistance);
                 }
-                else { writer.AddList(new[] { 0f }); } // No hit = 0.0
+                else
+                { observations[index] = 0f; } // No hit = 0.0
+                index++;
             }
-
+            writer.AddList(observations);
+            // Debug.Log($"Lidar: [{string.Join(", ", observations)}]");
             return _rayDirections.Length;
         }
 

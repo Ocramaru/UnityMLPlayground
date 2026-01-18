@@ -99,7 +99,7 @@ MonoBehaviour:
   maxAttackDistance: 3
   debugTarget: {fileID: 0}
   debugDuration: 1
-  drawDebugCurve: 0
+  drawDebugCurve: 1
 --- !u!1 &1178990308342459784
 GameObject:
   m_ObjectHideFlags: 0

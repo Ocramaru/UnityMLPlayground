@@ -73,20 +73,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 06821188320514ea7b9ba61409334e53, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DodgyBall.Scripts.Sensors.SensorImu
-  includeNoise: 1
-  includeGyroscope: 1
-  includeAcceleration: 1
-  includeBarometer: 1
-  includeCompass: 1
+  enabledSensors: 7
+  includeNoise: 0
   includeGravity: 1
-  gyroscopeNoiseDensity: 0.01
-  gyroscopeRandomWalk: 0.001
-  accelerometerNoiseDensity: 0.02
-  accelerometerRandomWalk: 0.002
-  barometerNoise: 0.5
-  compassNoise: 2
+  gravityAlpha: 0.95
+  accelerometerNoise:
+    noiseDensity: 0.02
+    randomWalk: 0.002
+  gyroscopeNoise:
+    noiseDensity: 0.01
+    randomWalk: 0.001
+  barometerNoise:
+    noiseDensity: 0.5
+    randomWalk: 0.05
+  compassNoise:
+    noiseDensity: 2
+    randomWalk: 0.1
   referenceTransform: {fileID: 3572073306135120074}
-  rb: {fileID: 3572073306135120075}
+  _rigidbody: {fileID: 3572073306135120075}
 --- !u!114 &7752226592088031735
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -102,7 +106,7 @@ MonoBehaviour:
   agentParameters:
     maxStep: 0
   hasUpgradedFromAgentParameters: 1
-  MaxStep: 1000
+  MaxStep: 0
   multicopter: {fileID: 2325133237296974822}
   objective: 0
   resetDistance: 50
@@ -134,7 +138,7 @@ MonoBehaviour:
     VectorActionDescriptions: []
     VectorActionSpaceType: 1
     hasUpgradedBrainParametersWithActionSpec: 1
-  m_Model: {fileID: 5022602860645237092, guid: df6b63395b4ac4dc9b115c3ea5494a7b, type: 3}
+  m_Model: {fileID: 0}
   m_InferenceDevice: 0
   m_BehaviorType: 0
   m_BehaviorName: Drone

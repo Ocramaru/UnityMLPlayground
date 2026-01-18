@@ -16,6 +16,16 @@ namespace DodgingAgent.Scripts.Utilities
         {
             return (float)ZigguratGaussian.Sample();
         }
+        
+        public static float Sample(float standardDeviation)
+        {
+            return (float)ZigguratGaussian.Sample(0f, standardDeviation);
+        }
+        
+        public static float Sample(float mean, float standardDeviation)
+        {
+            return (float)ZigguratGaussian.Sample(mean, standardDeviation);
+        }
 
         /// <summary>
         /// Generate a Gaussian noise vector with specified sigma

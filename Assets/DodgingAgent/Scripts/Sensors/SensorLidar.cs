@@ -58,15 +58,17 @@ namespace DodgingAgent.Scripts.Sensors
                 Vector3 worldDirection = referenceTransform.TransformDirection(direction);
                 bool hit = Physics.Raycast(origin, worldDirection, out RaycastHit hitInfo, maxDistance, detectionLayers);
                 float distance; Vector3 endPoint;
+                float color_t = 1f;
                 if (hit) {
                     distance = hitInfo.distance;
                     endPoint = hitInfo.point;
+                    color_t = distance / maxDistance;
                 } else {
                     distance = maxDistance;
                     endPoint = origin + worldDirection * maxDistance;
                 }
-                
-                Color color = hit ? Color.green : Color.magenta;
+                float hue = Mathf.Lerp(120f, 0f, 1f - color_t) / 360f;
+                Color color = Color.HSVToRGB(hue, 1f, 1f);
                 color.a = 0.3f;
                 Gizmos.color = color;
                 

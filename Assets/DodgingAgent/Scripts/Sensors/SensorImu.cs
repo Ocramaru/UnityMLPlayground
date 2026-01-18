@@ -1,47 +1,55 @@
 // IMU Noise Model based on Kalibr: https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model
-// TODO: Add GPS sensor for noisy position relative to spawn
-// TODO: Add dead-reckoning position estimate from velocity integration (accumulates error)
 
+using System.Collections.Generic;
 using Unity.MLAgents.Sensors;
 using UnityEngine;
 
 namespace DodgingAgent.Scripts.Sensors
 {
+    [System.Flags]
+    public enum SensorTypes
+    {
+        None = 0,
+        Accelerometer = 1 << 0,
+        Gyroscope = 1 << 1,
+        Barometer = 1 << 2,
+        Compass = 1 << 3
+    }
+
+    [System.Serializable]
+    public struct SensorNoiseConfig
+    {
+        [Tooltip("White noise density (units/√Hz)")]
+        public float noiseDensity;
+        [Tooltip("Random walk bias (units/s/√Hz)")]
+        public float randomWalk;
+    }
+
     /// <summary>
     /// IMU SensorComponent that creates modular ISensor implementations
-    /// Composes gyroscope, accelerometer, barometer, compass, and gravity sensors
     /// </summary>
     public class SensorImu : SensorComponent
     {
-        [Header("Sensor Options")]
+        [Header("Sensor Selection")]
+        public SensorTypes enabledSensors = SensorTypes.Accelerometer | SensorTypes.Gyroscope;
         public bool includeNoise;
-        public bool includeGyroscope = true;
-        public bool includeAcceleration = true;
-        public bool includeBarometer = true;
-        public bool includeCompass = true;
+
+        [Header("Accelerometer Options")]
         public bool includeGravity = true;
+        [Range(0f, 1f)]
+        public float gravityAlpha = 0.95f;
 
         [Header("Noise Parameters (Kalibr Model)")]
-        [Tooltip("Gyroscope white noise density σ_g (rad/s/√Hz)")]
-        public float gyroscopeNoiseDensity = 0.01f;
-        [Tooltip("Gyroscope random walk σ_bg (rad/s²/√Hz)")]
-        public float gyroscopeRandomWalk = 0.001f;
-        [Tooltip("Accelerometer white noise density σ_a (m/s²/√Hz)")]
-        public float accelerometerNoiseDensity = 0.02f;
-        [Tooltip("Accelerometer random walk σ_ba (m/s³/√Hz)")]
-        public float accelerometerRandomWalk = 0.002f;
-        [Tooltip("Barometer white noise (m)")]
-        public float barometerNoise = 0.5f;
-        [Tooltip("Compass white noise (degrees)")]
-        public float compassNoise = 2f;
+        public SensorNoiseConfig accelerometerNoise = new() { noiseDensity = 0.02f, randomWalk = 0.002f };
+        public SensorNoiseConfig gyroscopeNoise = new() { noiseDensity = 0.01f, randomWalk = 0.001f };
+        public SensorNoiseConfig barometerNoise = new() { noiseDensity = 0.5f, randomWalk = 0.05f };
+        public SensorNoiseConfig compassNoise = new() { noiseDensity = 2f, randomWalk = 0.1f };
 
         [Header("References")]
-        [Tooltip("Transform for sensor frame (optional, defaults to this transform)")]
         public Transform referenceTransform;
-        [Tooltip("Rigidbody to measure motion from (required for gyro/accelerometer)")]
-        public Rigidbody rb;
+        public Rigidbody _rigidbody;
 
-        private ISensorAccelerometer _accelerometer;
+        private ISensorImu imuSensor;
 
         private void Awake()
         {
@@ -50,36 +58,34 @@ namespace DodgingAgent.Scripts.Sensors
 
         public override ISensor[] CreateSensors()
         {
-            var sensors = new System.Collections.Generic.List<ISensor>();
+            var sensors = new List<ImuBaseSensor>();
+            imuSensor = new ISensorImu(referenceTransform, _rigidbody, includeNoise, sensors);
 
-            if (rb) {
-                if (includeGyroscope)
-                    sensors.Add(new ISensorGyro(referenceTransform, rb, includeNoise, gyroscopeNoiseDensity, gyroscopeRandomWalk));
+            if (enabledSensors.HasFlag(SensorTypes.Accelerometer) && _rigidbody)
+                sensors.Add(new Accelerometer(imuSensor, includeGravity, gravityAlpha,
+                    accelerometerNoise.noiseDensity, accelerometerNoise.randomWalk));
 
-                if (includeAcceleration)
-                {
-                    _accelerometer = new ISensorAccelerometer(referenceTransform, rb, includeNoise, accelerometerNoiseDensity, accelerometerRandomWalk);
-                    sensors.Add(_accelerometer);
-                }
-            } else {
-                if (includeGyroscope || includeAcceleration) Debug.LogWarning("No rigidbody assigned cannot collect gyro or accelerometer observations.");
-            }
+            if (enabledSensors.HasFlag(SensorTypes.Gyroscope) && _rigidbody)
+                sensors.Add(new Gyroscope(imuSensor,
+                    gyroscopeNoise.noiseDensity, gyroscopeNoise.randomWalk));
 
-            if (includeBarometer)
-                sensors.Add(new ISensorBarometer(referenceTransform, includeNoise, barometerNoise));
+            if (enabledSensors.HasFlag(SensorTypes.Barometer))
+                sensors.Add(new Barometer(imuSensor,
+                    barometerNoise.noiseDensity, barometerNoise.randomWalk));
 
-            if (includeCompass)
-                sensors.Add(new ISensorCompass(referenceTransform, includeNoise, compassNoise));
+            if (enabledSensors.HasFlag(SensorTypes.Compass))
+                sensors.Add(new Compass(imuSensor,
+                    compassNoise.noiseDensity, compassNoise.randomWalk));
 
-            if (includeGravity)
-                sensors.Add(new ISensorGravity(referenceTransform));
+            if (!_rigidbody && (enabledSensors.HasFlag(SensorTypes.Accelerometer) || enabledSensors.HasFlag(SensorTypes.Gyroscope)))
+                Debug.LogWarning("SensorImu: No rigidbody assigned, cannot create Accelerometer or Gyroscope.");
 
-            return sensors.ToArray();
+            return new ISensor[] { imuSensor };
         }
 
         private void FixedUpdate()
         {
-            _accelerometer?.FixedUpdate();  // Accelerometer needs to sync with physics updates
+            imuSensor?.FixedUpdate();
         }
     }
 }

@@ -301,7 +301,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7752226592088031735, guid: ccb30af37f1334b7e9dbe4d29d84ddfa, type: 3}
       propertyPath: objective
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7752226592088031735, guid: ccb30af37f1334b7e9dbe4d29d84ddfa, type: 3}
       propertyPath: resetDistance
