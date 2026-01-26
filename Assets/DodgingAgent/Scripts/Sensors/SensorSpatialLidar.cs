@@ -48,27 +48,34 @@ namespace DodgingAgent.Scripts.Sensors
             if (!referenceTransform) referenceTransform = transform;
 
             Vector3 origin = referenceTransform.position;
+            var rays = _spatialLidarSensor.GetRayDirections();
 
-            foreach (var direction in _spatialLidarSensor.GetRayDirections())
+            for (int direction = 0; direction < rays.GetLength(0); direction++)
             {
-                Vector3 worldDirection = referenceTransform.TransformDirection(direction);
-                bool hit = Physics.Raycast(origin, worldDirection, out RaycastHit hitInfo, maxDistance, detectionLayers);
-                float distance; Vector3 endPoint;
-                float color_t = 1f;
-                if (hit) {
-                    distance = hitInfo.distance;
-                    endPoint = hitInfo.point;
-                    color_t = distance / maxDistance;
-                } else {
-                    distance = maxDistance;
-                    endPoint = origin + worldDirection * maxDistance;
-                }
-                float hue = Mathf.Lerp(120f, 0f, 1f - color_t) / 360f;
-                Color color = Color.HSVToRGB(hue, 1f, 1f);
-                color.a = 0.3f;
-                Gizmos.color = color;
+                for (int i = 0; i < rays.GetLength(1); i++)
+                {
+                    Vector3 rayDirection = rays[direction, i];
+                    if (rayDirection == Vector3.zero) continue;
 
-                Gizmos.DrawLine(origin, endPoint);
+                    Vector3 worldDirection = referenceTransform.TransformDirection(rayDirection);
+                    bool hit = Physics.Raycast(origin, worldDirection, out RaycastHit hitInfo, maxDistance, detectionLayers);
+                    float distance; Vector3 endPoint;
+                    float color_t = 1f;
+                    if (hit) {
+                        distance = hitInfo.distance;
+                        endPoint = hitInfo.point;
+                        color_t = distance / maxDistance;
+                    } else {
+                        distance = maxDistance;
+                        endPoint = origin + worldDirection * maxDistance;
+                    }
+                    float hue = Mathf.Lerp(120f, 0f, 1f - color_t) / 360f;
+                    Color color = Color.HSVToRGB(hue, 1f, 1f);
+                    color.a = 0.3f;
+                    Gizmos.color = color;
+
+                    Gizmos.DrawLine(origin, endPoint);
+                }
             }
         }
     }
