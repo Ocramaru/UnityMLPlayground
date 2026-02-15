@@ -15,11 +15,11 @@ from mlagents.trainers.torch_entities.action_model import ActionModel
 from mlagents.trainers.torch_entities.layers import LinearEncoder, LSTM
 from mlagents.trainers.buffer import AgentBuffer
 
-from .models import ResnetVAE
+from .models import LidarCnnConfig, StateMlpConfig, SensorFusionConfig, SensorFusion
 
 class CustomActor(nn.Module):
     """
-    Custom Actor network for PPO.
+    Custom Actor using SensorFusion (LidarCnn + StateMlp + Attention) for ppo
 
     observation_specs is a List - one ObservationSpec per sensor:
         observation_specs[0] -> first sensor (e.g., Lidar)
@@ -32,10 +32,16 @@ class CustomActor(nn.Module):
         ...
     """
 
-    MODEL_EXPORT_VERSION = 3  # Required for ONNX export
+    MODEL_EXPORT_VERSION = 3
 
-    def __init__(self, observation_specs: List[ObservationSpec], network_settings: NetworkSettings,
-        action_spec: ActionSpec, conditional_sigma: bool = False, tanh_squash: bool = False,):
+    def __init__(
+            self,
+            observation_specs: List[ObservationSpec],
+            network_settings: NetworkSettings,
+            action_spec: ActionSpec,
+            conditional_sigma: bool = False,
+            tanh_squash: bool = False,
+    ):
         super().__init__()
         self.observation_specs = observation_specs
         self.action_spec = action_spec
@@ -50,158 +56,145 @@ class CustomActor(nn.Module):
             print(f"      Type: {spec.observation_type}")
         print("=" * 60 + "\n")
 
-        # Sort through Observations
-        self.encoder_info = {
-            "vae": {
-                "indices": [],
-                "indices_size": [],
-                "total_size": 0
-            },
-            "mlp": {
-                "indices": [],
-                "indices_size": [],
-                "total_size": 0
-            },
-            "total_size": 0,
-            "hidden_units": network_settings.hidden_units,
-            "memory_size": network_settings.memory.memory_size if network_settings.memory is not None else 0,
-            "use_lstm": network_settings.memory is not None,
-        }
+        # Sort observations into lidar vs state
+        self.lidar_indices = []
+        self.state_indices = []
+        self.lidar_size = 0
+        self.state_size = 0
 
         for i, spec in enumerate(observation_specs):
             size = int(np.prod(spec.shape))
+            if "LidarSensor" in spec.name:
+                self.lidar_indices.append(i)
+                self.lidar_size += size
+            else:
+                self.state_indices.append(i)
+                self.state_size += size
 
-            vae_or_mlp = "vae" if "LidarSensor" in spec.name else "mlp"
-            self.encoder_info[vae_or_mlp]["indices"].append(i)
-            self.encoder_info[vae_or_mlp]["indices_size"].append(size)
-            self.encoder_info[vae_or_mlp]["total_size"] += size
-            self.encoder_info["total_size"] += size  # add to full total
+        print(f"Lidar sensors: {self.lidar_indices} (total: {self.lidar_size})")
+        print(f"State sensors: {self.state_indices} (total: {self.state_size})")
 
-        print(f"VAE sensors: {self.encoder_info['vae']['indices']} (total: {self.encoder_info['vae']['total_size']})")
-        print(f"MLP sensors: {self.encoder_info['mlp']['indices']} (total: {self.encoder_info['mlp']['total_size']})")
-
-        # VAE
-        self.vae = None
-        self.vae_projection = None
-        if self.encoder_info['vae']['total_size'] > 0:
-            # set options
-            vae_latent_channels = 2
-            vae_num_channels = 4
-            vae_base_channels = 32
-
-            self.vae = ResnetVAE(
-                latent_channels=vae_latent_channels,
-                num_channels=vae_num_channels,
-                base_channels=vae_base_channels,
-                blocks_per_level=2,
-                dropout=0.1,
-                use_bn=False,  # Disable BatchNorm for ONNX export compatibility
-                d=1,  # 1D
-            )
-
-            # Calculate latent dim for projection layer
-            vae_latent_dim = self.vae.calculate_latent_dim(self.encoder_info['vae']['total_size'])
-            self.vae_projection = nn.Linear(vae_latent_dim, self.encoder_info["hidden_units"])
-            print(f"VAE latent dim: {vae_latent_dim} -> projection to {self.encoder_info['hidden_units']}")
-
-        # Build simple mlp for others | TODO: KaimingHeNormal see if I should do this
-        if self.encoder_info['mlp']['total_size'] > 0:
-            mlp_layers = [nn.Linear(self.encoder_info['mlp']['total_size'], self.encoder_info["hidden_units"]), nn.SiLU()]
-            for _ in range(network_settings.num_layers - 1):
-                mlp_layers.append(nn.Linear(self.encoder_info["hidden_units"], self.encoder_info["hidden_units"]))
-                mlp_layers.append(nn.SiLU())
-            self.mlp_encoder = nn.Sequential(*mlp_layers)
+        # Build config
+        # TODO: expose these via network_settings or yaml
+        self.use_memory = network_settings.memory is not None
+        if self.use_memory:
+            self.context_length = network_settings.memory.sequence_length
+            self.num_embeddings = network_settings.memory.memory_size
         else:
-            self.mlp_encoder = None
+            raise RuntimeError("Cannot use custom attention without memory")
 
-        # Fusion Layer
-        if self.vae and self.mlp_encoder:
-            self.fusion = nn.Linear(self.encoder_info["hidden_units"] * 2, self.encoder_info["hidden_units"])
-        else:
-            self.fusion = None
+        lidar_config = LidarCnnConfig(
+            in_channels=6,
+            base_channels=32,
+            num_levels=3,
+        )
+        state_config = StateMlpConfig(
+            state_dim=self.state_size,
+            hidden_dim=network_settings.hidden_units,
+            num_layers=2,
+        )
 
-        # LSTM
-        if self.encoder_info["use_lstm"]:
-            self.lstm = LSTM(self.encoder_info["hidden_units"], self.encoder_info["memory_size"])
-            self.encoding_size = self.encoder_info["memory_size"] // 2
-        else:
-            self.lstm = None
-            self.encoding_size = self.encoder_info["hidden_units"]
+        fusion_config = SensorFusionConfig(
+            lidar_config=lidar_config,
+            state_config=state_config,
+            num_embeddings=self.num_embeddings,
+            num_head=4,
+            block_size=self.context_length + 64,
+            attention_drop=0.1,
+            residual_drop=0.1,
+        )
+
+        self.sensor_fusion = SensorFusion(fusion_config)
+        self.encoding_size = fusion_config.num_embeddings
+        self._memory_size = self.context_length * self.num_embeddings
 
         # Action Model copied from Unity's implementation
-        self.action_model = ActionModel(self.encoding_size, action_spec, conditional_sigma=conditional_sigma, tanh_squash=tanh_squash, deterministic=network_settings.deterministic,)
+        self.action_model = ActionModel(
+            self.encoding_size,
+            action_spec,
+            conditional_sigma=conditional_sigma,
+            tanh_squash=tanh_squash,
+            deterministic=network_settings.deterministic,
+        )
 
-        # Export Parameters (for Onnx Model)
+        # Export Parameters (for ONNX)
         self.version_number = nn.Parameter(torch.Tensor([self.MODEL_EXPORT_VERSION]), requires_grad=False)
-        self.memory_size_vector = nn.Parameter(torch.Tensor([self.encoder_info["memory_size"]]), requires_grad=False)
-        self.continuous_act_size_vector = nn.Parameter(torch.Tensor([int(action_spec.continuous_size)]), requires_grad=False)
+        self.memory_size_vector = nn.Parameter(torch.Tensor([self._memory_size]), requires_grad=False)
+        self.continuous_act_size_vector = nn.Parameter(torch.Tensor([int(action_spec.continuous_size)]),requires_grad=False)
         self.discrete_act_size_vector = nn.Parameter(torch.Tensor([action_spec.discrete_branches]), requires_grad=False)
-        self.act_size_vector_deprecated = nn.Parameter(torch.Tensor([action_spec.continuous_size + sum(action_spec.discrete_branches)]),requires_grad=False,)
+        self.act_size_vector_deprecated = nn.Parameter(torch.Tensor([action_spec.continuous_size + sum(action_spec.discrete_branches)]), requires_grad=False)
 
     @property
     def memory_size(self) -> int:
         """Size of LSTM memory. 0 if not using LSTM."""
-        return self.lstm.memory_size if self.encoder_info["use_lstm"] else 0
+        return self._memory_size
 
     def update_normalization(self, buffer: AgentBuffer) -> None:
         """Called to update input normalization. Implement if using normalization."""
         pass
 
-    def _encode_observations(
-        self,
-        inputs: List[torch.Tensor],
-        memories: Optional[torch.Tensor] = None,
-        sequence_length: int = 1,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Args:
-            inputs: List of tensors, one per sensor
-                inputs[0] shape: (batch, *observation_specs[0].shape)
-                inputs[1] shape: (batch, *observation_specs[1].shape)
-                ...
-            memories: LSTM hidden state if using memory
-            sequence_length: For LSTM batching
+    def _memories_to_past_tokens(self, memories: Optional[torch.Tensor]) -> Optional[torch.Tensor]:
+        """Unflatten memories -> (B, context_length, num_embeddings)"""
+        if memories is None:
+            return None
+        return memories.squeeze(0).reshape(-1, self.context_length, self.num_embeddings)
 
-        Returns:
-            encoding: (batch, encoding_size) tensor
-            memories: Updated memory state
-        """
+    def _past_tokens_to_memories(self, past_tokens: torch.Tensor) -> torch.Tensor:
+        """Flatten past_tokens -> (1, B, memory_size) to match LSTM format"""
+        return past_tokens.reshape(-1, self._memory_size).unsqueeze(0)
+
+    def _update_past_tokens(self, past_tokens: Optional[torch.Tensor], new_token: torch.Tensor) -> torch.Tensor:
+        """Append new token, drop oldest if at capacity."""
+        # new_token: (B, embed)
+        new_token = new_token.unsqueeze(1)  # (B, 1, embed)
+
+        if past_tokens is None:  # pad with zeros
+            B = new_token.size(0)
+            past_tokens = torch.zeros(B, self.context_length - 1, self.num_embeddings, device=new_token.device)
+            return torch.cat([past_tokens, new_token], dim=1)
+        else:  # drop old, append new
+            return torch.cat([past_tokens[:, 1:, :], new_token], dim=1)
+
+    def _encode_observations(
+            self,
+            inputs: List[torch.Tensor],
+            memories: Optional[torch.Tensor] = None,
+            sequence_length: int = 1,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        # print(f"Actor: sequence_length: {sequence_length}, memories: {memories.shape if memories is not None else None}")
+        # Gather lidar -> (B, 6, R)
+        lidar_obs = [inputs[i] for i in self.lidar_indices]
+        lidar_x = torch.cat(lidar_obs, dim=1).squeeze(-1)  # has to be (B, C, R)
+
+        # Gather state -> (B, state_size)
+        state_obs = [inputs[i].flatten(start_dim=1) for i in self.state_indices]
+        state_x = torch.cat(state_obs, dim=1)
+
+        # Unflatten and unroll memories
+        actual_batch = lidar_x.size(0) // sequence_length
+        lidar_x = lidar_x.reshape(actual_batch, sequence_length, *lidar_x.shape[1:])
+        state_x = state_x.reshape(actual_batch, sequence_length, -1)
+
+        past_tokens = self._memories_to_past_tokens(memories)
         encodings = []
 
-        # VAE path for lidar
-        if self.vae is not None:
-            vae_indices = self.encoder_info['vae']['indices']
-            vae_obs = [inputs[i].flatten(start_dim=1) for i in vae_indices]
-            vae_combined = torch.cat(vae_obs, dim=1)
-            # Reshape to (batch, 1, length) for Conv1d
-            vae_input = vae_combined.unsqueeze(1)
-            # Get VAE latent (mu only for inference)
-            mu, _ = self.vae.encoder(vae_input)
-            vae_flat = mu.flatten(start_dim=1)
-            vae_encoding = self.vae_projection(vae_flat)
-            encodings.append(vae_encoding)
+        for t in range(sequence_length):
+            enc = self.sensor_fusion(
+                lidar_x[:, t],  # (actual_batch, 6, R)
+                state_x[:, t],  # (actual_batch, state_dim)
+                past_tokens
+            )
+            encodings.append(enc)
+            past_tokens = self._update_past_tokens(past_tokens, enc)
 
-        # MLP path for other sensors
-        if self.mlp_encoder is not None:
-            mlp_indices = self.encoder_info['mlp']['indices']
-            mlp_obs = [inputs[i].flatten(start_dim=1) for i in mlp_indices]
-            mlp_combined = torch.cat(mlp_obs, dim=1)
-            mlp_encoding = self.mlp_encoder(mlp_combined)
-            encodings.append(mlp_encoding)
+        # Stack and flatten back to (B, embed)
+        encoding = torch.stack(encodings, dim=1)  # (actual_batch, seq, embed)
+        encoding = encoding.reshape(-1, self.num_embeddings)  # (B, embed)
 
-        # Combine encodings
-        if len(encodings) == 2:
-            encoding = self.fusion(torch.cat(encodings, dim=1))
-        else:
-            encoding = encodings[0]
+        # Update past tokens
+        memories_out = self._past_tokens_to_memories(past_tokens)
 
-        # LSTM if enabled
-        if self.encoder_info["use_lstm"]:
-            encoding = encoding.reshape([-1, sequence_length, self.encoder_info["hidden_units"]])
-            encoding, memories = self.lstm(encoding, memories)
-            encoding = encoding.reshape([-1, self.encoder_info["memory_size"] // 2])
-
-        return encoding, memories
+        return encoding, memories_out
 
     def get_action_and_stats(
         self,
@@ -212,17 +205,6 @@ class CustomActor(nn.Module):
     ) -> Tuple[AgentAction, Dict[str, Any], torch.Tensor]:
         """
         INFERENCE: Called every step to get actions.
-
-        Args:
-            inputs: List of observation tensors from Unity sensors
-            masks: Action masks for discrete actions
-            memories: LSTM state
-            sequence_length: For LSTM
-
-        Returns:
-            action: The sampled action
-            run_out: Dict with 'env_action', 'log_probs', 'entropy'
-            memories: Updated memory state
         """
         encoding, memories = self._encode_observations(inputs, memories, sequence_length)
 
@@ -247,16 +229,6 @@ class CustomActor(nn.Module):
     ) -> Dict[str, Any]:
         """
         TRAINING: Compute log_probs and entropy for actions already taken.
-
-        Args:
-            inputs: Observation tensors
-            actions: Actions that were taken (from replay buffer)
-            masks: Action masks
-            memories: LSTM state
-            sequence_length: For LSTM
-
-        Returns:
-            Dict with 'log_probs' and 'entropy'
         """
         encoding, _ = self._encode_observations(inputs, memories, sequence_length)
 
@@ -279,7 +251,7 @@ class CustomActor(nn.Module):
         """
         encoding, memories_out = self._encode_observations(inputs, memories, sequence_length=1)
 
-        (cont_action_out, disc_action_out, action_out_deprecated, deterministic_cont_action_out,deterministic_disc_action_out,
+        (cont_action_out, disc_action_out, action_out_deprecated, deterministic_cont_action_out, deterministic_disc_action_out,
             ) = self.action_model.get_action_out(encoding, masks)
 
         export_out = [self.version_number, self.memory_size_vector]
@@ -295,10 +267,9 @@ class CustomActor(nn.Module):
                 self.discrete_act_size_vector,
                 deterministic_disc_action_out,
             ]
-        if self.encoder_info["memory_size"] > 0:
+        if self._memory_size > 0:
             export_out += [memories_out]
         return tuple(export_out)
-
 
 class CustomCritic(nn.Module):
     """
@@ -315,83 +286,135 @@ class CustomCritic(nn.Module):
     ):
         super().__init__()
 
-        self.observation_specs = observation_specs
-        self.h_size = network_settings.hidden_units
-        self.use_lstm = network_settings.memory is not None
-        self.m_size = (
-            network_settings.memory.memory_size
-            if network_settings.memory is not None
-            else 0
-        )
+        # Sort observations into lidar vs state
+        self.lidar_indices = []
+        self.state_indices = []
+        self.lidar_size = 0
+        self.state_size = 0
 
-        # Calculate total observation size
-        total_obs_size = sum(int(np.prod(spec.shape)) for spec in observation_specs)
+        for i, spec in enumerate(observation_specs):
+            size = int(np.prod(spec.shape))
+            if "LidarSensor" in spec.name:
+                self.lidar_indices.append(i)
+                self.lidar_size += size
+            else:
+                self.state_indices.append(i)
+                self.state_size += size
 
-        # Encoder (can be same or different from actor)
-        self.encoder = nn.Sequential(
-            nn.Linear(total_obs_size, self.h_size),
-            nn.ReLU(),
-            nn.Linear(self.h_size, self.h_size),
-            nn.ReLU(),
-        )
-
-        # LSTM if enabled
-        if self.use_lstm:
-            self.lstm = LSTM(self.h_size, self.m_size)
-            self.encoding_size = self.m_size // 2
+        # Memory settings
+        self.use_memory = network_settings.memory is not None
+        if self.use_memory:
+            self.context_length = network_settings.memory.sequence_length
+            self.num_embeddings = network_settings.memory.memory_size
         else:
-            self.lstm = None
-            self.encoding_size = self.h_size
+            raise RuntimeError("Cannot use custom attention without memory")
 
-        # Value heads - one per reward stream (usually just "extrinsic")
+        # Build config (same as actor)
+        lidar_config = LidarCnnConfig(
+            in_channels=6,
+            base_channels=32,
+            num_levels=3,
+        )
+        state_config = StateMlpConfig(
+            state_dim=self.state_size,
+            hidden_dim=network_settings.hidden_units,
+            num_layers=2,
+        )
+        fusion_config = SensorFusionConfig(
+            lidar_config=lidar_config,
+            state_config=state_config,
+            num_embeddings=self.num_embeddings,
+            num_head=4,
+            block_size=self.context_length + 64,
+            attention_drop=0.1,
+            residual_drop=0.1,
+        )
+
+        self.sensor_fusion = SensorFusion(fusion_config)
+        self.encoding_size = self.num_embeddings
+        self._memory_size = self.context_length * self.num_embeddings if self.use_memory else 0
+
+        # Value heads - one per reward stream
         self.value_heads = nn.ModuleDict({
             name: nn.Linear(self.encoding_size, 1) for name in stream_names
         })
 
     @property
     def memory_size(self) -> int:
-        return self.lstm.memory_size if self.use_lstm else 0
+        return self._memory_size
+
+    def _memories_to_past_tokens(self, memories: Optional[torch.Tensor]) -> Optional[torch.Tensor]:
+        if memories is None:
+            return None
+        return memories.view(-1, self.context_length, self.num_embeddings)
+
+    def _past_tokens_to_memories(self, past_tokens: torch.Tensor) -> torch.Tensor:
+        return past_tokens.view(1, -1, self._memory_size)
+
+    def _update_past_tokens(self, past_tokens: Optional[torch.Tensor], new_token: torch.Tensor) -> torch.Tensor:
+        new_token = new_token.unsqueeze(1)
+
+        if past_tokens is None:
+            B = new_token.size(0)
+            past_tokens = torch.zeros(B, self.context_length - 1, self.num_embeddings, device=new_token.device)
+            return torch.cat([past_tokens, new_token], dim=1)
+        else:
+            return torch.cat([past_tokens[:, 1:, :], new_token], dim=1)
 
     def _encode_observations(
-        self,
-        inputs: List[torch.Tensor],
-        memories: Optional[torch.Tensor] = None,
-        sequence_length: int = 1,
+            self,
+            inputs: List[torch.Tensor],
+            memories: Optional[torch.Tensor] = None,
+            sequence_length: int = 1,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Encode observations to hidden representation."""
-        flat_obs = [obs.flatten(start_dim=1) for obs in inputs]
-        combined = torch.cat(flat_obs, dim=1)
+        # print(f"Critic: sequence_length: {sequence_length}, memories: {memories.shape if memories is not None else None}")
+        # Gather lidar -> (B, 6, R)
+        lidar_obs = [inputs[i] for i in self.lidar_indices]
+        lidar_x = torch.cat(lidar_obs, dim=1).squeeze(-1) # has to be (B, C, R)
 
-        encoding = self.encoder(combined)
+        # Gather state -> (B, state_size)
+        state_obs = [inputs[i].flatten(start_dim=1) for i in self.state_indices]
+        state_x = torch.cat(state_obs, dim=1)
 
-        if self.use_lstm:
-            encoding = encoding.reshape([-1, sequence_length, self.h_size])
-            encoding, memories = self.lstm(encoding, memories)
-            encoding = encoding.reshape([-1, self.m_size // 2])
+        # Unflatten and unroll memories
+        actual_batch = lidar_x.size(0) // sequence_length
+        lidar_x = lidar_x.reshape(actual_batch, sequence_length, *lidar_x.shape[1:])
+        state_x = state_x.reshape(actual_batch, sequence_length, -1)
 
-        return encoding, memories
+        past_tokens = self._memories_to_past_tokens(memories)
+        encodings = []
+
+        for t in range(sequence_length):
+            enc = self.sensor_fusion(
+                lidar_x[:, t],  # (actual_batch, 6, R)
+                state_x[:, t],  # (actual_batch, state_dim)
+                past_tokens
+            )
+            encodings.append(enc)
+            past_tokens = self._update_past_tokens(past_tokens, enc)
+
+        # Stack and flatten back to (B, embed)
+        encoding = torch.stack(encodings, dim=1)  # (actual_batch, seq, embed)
+        encoding = encoding.reshape(-1, self.num_embeddings)  # (B, embed)
+
+        # Update past tokens
+        memories_out = self._past_tokens_to_memories(past_tokens)
+
+        return encoding, memories_out
 
     def critic_pass(
-        self,
-        inputs: List[torch.Tensor],
-        memories: Optional[torch.Tensor] = None,
-        sequence_length: int = 1,
+            self,
+            inputs: List[torch.Tensor],
+            memories: Optional[torch.Tensor] = None,
+            sequence_length: int = 1,
     ) -> Tuple[Dict[str, torch.Tensor], torch.Tensor]:
-        """
-        Get value estimates for each reward stream.
-
-        Returns:
-            value_outputs: Dict mapping stream name to value tensor
-            memories: Updated memory state
-        """
         encoding, memories = self._encode_observations(inputs, memories, sequence_length)
 
         value_outputs = {
-            name: head(encoding) for name, head in self.value_heads.items()
+            name: head(encoding).squeeze(-1) for name, head in self.value_heads.items()
         }
 
         return value_outputs, memories
 
     def update_normalization(self, buffer: AgentBuffer) -> None:
-        """Called to update input normalization. Implement if using normalization."""
         pass
