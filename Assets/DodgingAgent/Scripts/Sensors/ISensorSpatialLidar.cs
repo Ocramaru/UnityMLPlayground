@@ -4,6 +4,7 @@ using System.Linq;
 using Unity.MLAgents;
 using Unity.MLAgents.Sensors;
 using UnityEngine;
+using DodgingAgent.Scripts.Core;
 
 namespace DodgingAgent.Scripts.Sensors
 {
@@ -21,26 +22,13 @@ namespace DodgingAgent.Scripts.Sensors
         
         private readonly Agent _agent; // needed for step count
 
-        public readonly bool recordMap;
+        private readonly GeodesicMeshMap _geodesicMeshMap;
+        private bool _firstStep = true;
         private int _episode;
-        private readonly List<SpatialStamp> spatialMap;
 
-        [Serializable]
-        public struct SpatialStamp
-        {
-            public Vector3[,] hitPoints;
-            public int step;
-            public int episode;
+        // private const float AngleThreshold = 5f; // degrees - refine mesh if hit deviates more than this
 
-            public SpatialStamp(Vector3[,] hitPoints, int step, int episode)
-            {
-                this.hitPoints = hitPoints;
-                this.step = step;
-                this.episode = episode;
-            }
-        }
-
-        public ISensorSpatialLidar(Agent agent, Transform referenceTransform, float maxDistance, LayerMask detectionLayers, int numberOfRays = 360, bool recordMap = false)
+        public ISensorSpatialLidar(Agent agent, Transform referenceTransform, float maxDistance, LayerMask detectionLayers, int numberOfRays = 360, GeodesicMeshMap geodesicMeshMap = null)
         {
             _agent = agent;
             _referenceTransform = referenceTransform;
@@ -48,8 +36,7 @@ namespace DodgingAgent.Scripts.Sensors
             _detectionLayers = detectionLayers;
             _rayDirections = SetupUnitDirections(numberOfRays);
 
-            this.recordMap = recordMap;
-            if (recordMap) spatialMap = new List<SpatialStamp>();
+            _geodesicMeshMap = geodesicMeshMap;
         }
 
         private Vector3[,] SetupUnitDirections(int n)
@@ -86,16 +73,17 @@ namespace DodgingAgent.Scripts.Sensors
                 for (int j = 0; j < buckets[i].Count; j++)
                     directions[i, j] = buckets[i][j];
             }
-            Debug.Log($"Max: {maxVisualHeight}, Buckets: [{string.Join(", ", buckets.Select(b => b.Count))}]");
+//            Debug.Log($"Max: {maxVisualHeight}, Buckets: [{string.Join(", ", buckets.Select(b => b.Count))}]");
             return directions;
         }
 
-        public ObservationSpec GetObservationSpec() => ObservationSpec.Visual(1, maxVisualHeight, 6);
+        public ObservationSpec GetObservationSpec() => ObservationSpec.Visual(6, maxVisualHeight, 1);  // squeeze in python
 
         public int Write(ObservationWriter writer)
         {
             Vector3 origin = _referenceTransform.position;
-            Vector3[,] hitPoints = recordMap ? new Vector3[6, maxVisualHeight] : null;
+            
+            var vectorList = (_geodesicMeshMap) ? new List<Vector3>() : null;
 
             for (int direction = 0; direction < 6; direction++)
             {
@@ -105,7 +93,7 @@ namespace DodgingAgent.Scripts.Sensors
 
                     if (rayDirection == Vector3.zero)
                     {
-                        writer[0, i, direction] = 0f;
+                        writer[direction, i, 0] = 0f;
                         continue;
                     }
 
@@ -113,19 +101,23 @@ namespace DodgingAgent.Scripts.Sensors
 
                     if (Physics.Raycast(origin, worldDirection, out RaycastHit hit, _maxDistance, _detectionLayers))
                     {
-                        writer[0, i, direction] = 1f - (hit.distance / _maxDistance);
-                        if (recordMap) hitPoints[direction, i] = hit.point;
-                    }
-                    else
-                    {
-                        writer[0, i, direction] = 0f;
+                        writer[direction, i, 0] = 1f - (hit.distance / _maxDistance);
+                        vectorList?.Add(hit.point);  // maybe do something different and not perfect
+                    } else {
+                        writer[direction, i, 0] = 0f;
                     }
                 }
             }
-
-            if (recordMap)
+            
+            if (vectorList is { Count: >= 4 })
             {
-                spatialMap.Add(new SpatialStamp(hitPoints, _agent.StepCount, _episode));
+                if (_firstStep)
+                {
+                    _geodesicMeshMap.InitializeMesh(vectorList.ToArray());
+                    _firstStep = false;
+                } else {
+                    _geodesicMeshMap.ProcessObservation(_agent.transform.position,vectorList.ToArray());
+                }
             }
 
             return 6 * maxVisualHeight;

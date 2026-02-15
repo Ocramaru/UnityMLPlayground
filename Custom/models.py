@@ -387,8 +387,8 @@ class SensorFusion(nn.Module):
         x = torch.cat([s_out, l_out], 1)   # (B, R+1, embed)
         x = self.pool(x.mean(dim=1, keepdim=True))  # (B, embed)
 
-        if past_tokens is not None:  # TODO: Find way to switch to k,v pairs
-            x = torch.cat([past_tokens, x], dim=1)  # (B, T+1, embed)
+        # Concat with past tokens for attention context
+        x = torch.cat([past_tokens, x], dim=1)  # (B, T+1, embed)
 
         # Causal Attention
         x = x + self.attn(self.ln1(x))

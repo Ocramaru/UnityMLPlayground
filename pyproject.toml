@@ -13,7 +13,8 @@ dependencies = [
     "protobuf==3.20.3",
     "numpy>=1.23.5",
     "tensorboard",
-    "onnxscript"
+    "onnxscript",
+    "notebook>=7.5.3",
 ]
 
 [tool.uv.sources]

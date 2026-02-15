@@ -1,6 +1,7 @@
 using Unity.MLAgents;
 using Unity.MLAgents.Sensors;
 using UnityEngine;
+using DodgingAgent.Scripts.Core;
 
 namespace DodgingAgent.Scripts.Sensors
 {
@@ -21,23 +22,36 @@ namespace DodgingAgent.Scripts.Sensors
 
         [Header("References")]
         [Tooltip("(Optional)")]
-        public Transform referenceTransform; 
+        public Transform referenceTransform;
         
         private Agent agent;
         private ISensorSpatialLidar _spatialLidarSensor;
+        private GeodesicMeshMap _geodesicMap = null;
 
         private void Awake()
         {
             if (!referenceTransform) referenceTransform = transform;
             agent = GetComponent<Agent>();
             if (!agent) Debug.Log("No agent found");
+
+            if (!recordMap || _geodesicMap) return;
+            _geodesicMap = GetComponentInChildren<GeodesicMeshMap>();
         }
 
         public override ISensor[] CreateSensors()
         {
-            _spatialLidarSensor = new ISensorSpatialLidar(
-                agent, referenceTransform, maxDistance, detectionLayers, numberOfRays, recordMap);
+            if (recordMap && !_geodesicMap)
+            {
+                var newMapObject = new GameObject("MeshMap");
+                newMapObject.transform.position = Vector3.zero;
+                newMapObject.transform.rotation = Quaternion.identity;
+                _geodesicMap = newMapObject.AddComponent<GeodesicMeshMap>();
+                Debug.Log($"Created mesh map under {transform.name}");
+            }
             
+            _spatialLidarSensor = new ISensorSpatialLidar(
+                agent, referenceTransform, maxDistance, detectionLayers, numberOfRays, _geodesicMap);
+
             return new ISensor[] { _spatialLidarSensor };
         }
 
